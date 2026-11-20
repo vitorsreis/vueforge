@@ -1,0 +1,77 @@
+#!/usr/bin/env node
+import process from 'node:process'
+import console from 'node:console'
+import { parseArgs } from 'node:util'
+
+import {
+  listenOptions,
+  loadProjectConfig,
+  resolveTempDir,
+} from '../dist/config.js'
+import { buildProject } from '../dist/build.js'
+import { serveProject } from '../dist/server/serve.js'
+
+const help = `Usage:
+  vueforge serve [--dev] [--host <host>] [--port <port>]
+  vueforge build`
+
+async function main() {
+  const { values, positionals } = parseArgs({
+    options: {
+      dev: { type: 'boolean' },
+      host: { type: 'string' },
+      port: { type: 'string' },
+      help: { type: 'boolean', short: 'h' },
+    },
+    allowPositionals: true,
+  })
+
+  const [command] = positionals
+  const unknownCommand =
+    command !== undefined && command !== 'serve' && command !== 'build'
+  const hasServeOptions =
+    values.dev || values.host !== undefined || values.port !== undefined
+
+  if (unknownCommand) {
+    throw new Error(`Unknown command "${command}".\n${help}`)
+  }
+
+  if (positionals.length > 1) {
+    throw new Error(
+      `Unexpected argument "${positionals[1]}". Run the command from the project root.\n${help}`,
+    )
+  }
+
+  if (hasServeOptions && command !== 'serve') {
+    throw new Error(
+      `The --dev, --host and --port options belong to "serve".\n${help}`,
+    )
+  }
+
+  if (values.help || !command) {
+    console.log(help)
+    return
+  }
+
+  const root = process.cwd()
+  const dev = values.dev ?? false
+  const config = await loadProjectConfig(root, {
+    command: command === 'build' ? 'build' : 'serve',
+    mode: dev ? 'development' : 'production',
+  })
+
+  const tempDir = resolveTempDir(root, config.tempDir)
+
+  if (command === 'build') {
+    await buildProject(root, tempDir, config.vite)
+    return
+  }
+
+  const listener = listenOptions(config, values.host, values.port)
+  await serveProject(root, dev, listener, tempDir, config.vite)
+}
+
+main().catch((error) => {
+  console.error(error instanceof Error ? error.message : error)
+  process.exitCode = 1
+})
