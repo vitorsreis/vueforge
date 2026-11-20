@@ -1,0 +1,5 @@
+.vueforge/
+coverage/
+dist/
+package-lock.json
+LICENSE
