@@ -31,7 +31,8 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test": "npm run build && node --test",
-    "check": "npm run format:check && npm run lint && npm run typecheck && npm test"
+    "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
+    "test:browser": "npm run build && node tests/browser-smoke.mjs"
   },
   "dependencies": {
     "@vitejs/plugin-vue": "^6.0.11",
@@ -44,6 +45,7 @@
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
     "eslint": "^10.15.0",
+    "playwright-core": "^1.65.1",
     "prettier": "^3.10.1",
     "typescript": "~6.0.3",
     "typescript-eslint": "^8.73.0",
