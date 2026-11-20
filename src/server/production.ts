@@ -5,7 +5,8 @@ import { pathToFileURL } from 'node:url'
 import express from 'express'
 import type { Manifest } from 'vite'
 
-import { documentShell, renderFrom } from './renderer.js'
+import type { HeadTag } from '../render/head.js'
+import { renderFrom, type Render } from './renderer.js'
 
 export async function productionRenderer(tempDir: string) {
   const clientDir = join(tempDir, 'client')
@@ -24,17 +25,25 @@ export async function productionRenderer(tempDir: string) {
     throw new Error('Client entry is missing. Run vueforge build again.')
   }
 
-  const styles = chunks
+  const assets: HeadTag[] = chunks
     .filter((chunk) => chunk.file.endsWith('.css'))
-    .map((chunk) => `<link rel="stylesheet" href="/${chunk.file}">`)
-    .join('')
+    .map((chunk) => ({
+      tag: 'link',
+      attrs: { rel: 'stylesheet', href: '/' + chunk.file },
+    }))
+  assets.push({
+    tag: 'script',
+    attrs: { type: 'module', src: '/' + client.file },
+  })
 
-  const html = documentShell('/' + client.file, styles)
-  const render = renderFrom(await import(pathToFileURL(entry).href))
+  const renderApp = renderFrom(await import(pathToFileURL(entry).href))
+  const render: Render = async (props) => {
+    const { content, teleportHead } = await renderApp(props)
+    return { content, teleportHead, assets }
+  }
 
   return {
     render,
-    template: () => html,
     middleware: express.static(clientDir),
     close: undefined,
   }

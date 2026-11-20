@@ -3,13 +3,9 @@ import type { Server } from 'node:http'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 import type { UserConfig } from 'vite'
 
-import {
-  clientEntry,
-  serverEntry,
-  requireApp,
-  vueViteConfig,
-} from '../vite/vue-app.js'
-import { documentShell, renderFrom, type Render } from './renderer.js'
+import { developmentAssets } from '../vite/development-assets.js'
+import { serverEntry, requireApp, vueViteConfig } from '../vite/vue-app.js'
+import { renderFrom, type Props } from './renderer.js'
 
 export async function developmentRenderer(
   root: string,
@@ -39,18 +35,21 @@ export async function developmentRenderer(
     throw new Error('VueForge could not initialize the Vite SSR runner.')
   }
 
-  const render: Render = async (props) => {
+  const render = async (props?: Props) => {
     const entry = await ssr.runner.import<unknown>(serverEntry)
     const renderApp = renderFrom(entry)
-    return renderApp(props)
+    const { content, teleportHead, modules } = await renderApp(props)
+    return {
+      content,
+      teleportHead,
+      assets: await developmentAssets(vite.environments.client, modules),
+    }
   }
-
-  const template = (url: string) =>
-    vite.transformIndexHtml(url, documentShell('/@id/' + clientEntry))
 
   return {
     render,
-    template,
+    transformDocument: (url: string, html: string) =>
+      vite.transformIndexHtml(url, html),
     middleware: vite.middlewares,
     close: () => vite.close(),
   }

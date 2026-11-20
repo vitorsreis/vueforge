@@ -45,13 +45,21 @@ function post(url, body) {
   })
 }
 
-async function checkRenderResponses(url) {
+async function checkRenderResponses(url, dev) {
   const page = await fetch(url, { signal: AbortSignal.timeout(5000) })
   assert.equal(page.status, 200)
-  assert.match(await page.text(), /<h1>VueForge<\/h1>/)
+  const document = await page.text()
+  assert.match(document, /<h1>VueForge<\/h1>/)
+  assert.match(document, /id="vueforge-props"/)
+  if (dev) {
+    assert.equal(document.split('/@vite/client').length - 1, 1)
+    assert.match(document, /src="\/@vueforge\/client"/)
+  }
 
   for (const [body, status, message] of [
     ['{', 400, /JSON object/],
+    ['{"format":"xml"}', 400, /format/],
+    ['{"hydrate":1}', 400, /hydrate/],
     ['[]', 400, /request body.*object/i],
     ['{"props":[]}', 400, /"props" must be a JSON object/],
     [JSON.stringify({ title: 'x'.repeat(65536) }), 413, /64 KiB/],
@@ -66,7 +74,8 @@ async function checkRenderResponses(url) {
       const response = await post(url, JSON.stringify({ props: { title } }))
       assert.equal(response.status, 200)
       assert.deepEqual(await response.json(), {
-        html: '<h1>' + title + '</h1>',
+        head: '',
+        content: '<h1>' + title + '</h1>',
       })
     }),
   )
@@ -79,7 +88,7 @@ async function checkComponentReload(cwd, url) {
   for (;;) {
     const response = await post(url, '{}')
     assert.equal(response.status, 200)
-    if ((await response.json()).html === '<h2>VueForge</h2>') break
+    if ((await response.json()).content === '<h2>VueForge</h2>') break
     assert.ok(Date.now() < deadline, 'SSR did not pick up the SFC edit')
     await delay(50)
   }
@@ -157,7 +166,7 @@ for (const mode of [
         assert.equal(health.headers.get('cache-control'), 'no-store')
         assert.deepEqual(await health.json(), { status: 'ok' })
 
-        await checkRenderResponses(url)
+        await checkRenderResponses(url, dev)
 
         if (dev) {
           await checkComponentReload(cwd, url)

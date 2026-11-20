@@ -3,9 +3,11 @@ import { createServer as createHttpServer } from 'node:http'
 import express from 'express'
 import type { UserConfig } from 'vite'
 
+import { renderResponse } from '../render/result.js'
 import { developmentRenderer } from './development.js'
 import { productionRenderer } from './production.js'
 import { renderRoute } from './render-route.js'
+import { documentShell } from './renderer.js'
 
 export async function serveProject(
   root: string,
@@ -30,9 +32,25 @@ export async function serveProject(
   app.use(renderer.middleware)
 
   app.get('/', async (req, res) => {
-    const html = await renderer.render()
-    const shell = await renderer.template(req.originalUrl)
-    res.type('html').send(shell.replace('<!--vueforge-->', () => html))
+    const result = await renderer.render()
+    if ('transformDocument' in renderer) {
+      // Vite inserts its own client when transforming a full HTML document.
+      result.assets = result.assets.filter(
+        ({ tag, attrs }) => tag !== 'script' || attrs.src !== '/@vite/client',
+      )
+    }
+    const { head, content } = renderResponse(result, {
+      format: 'html',
+      hydrate: true,
+    })
+    const html = documentShell(head, content)
+    res
+      .type('html')
+      .send(
+        'transformDocument' in renderer
+          ? await renderer.transformDocument(req.originalUrl, html)
+          : html,
+      )
   })
 
   try {

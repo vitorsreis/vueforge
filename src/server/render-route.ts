@@ -1,11 +1,13 @@
 import express from 'express'
 import type { ErrorRequestHandler } from 'express'
 
+import {
+  MAX_REQUEST_BYTES,
+  parseRenderRequest,
+  RenderInputError,
+} from '../render/request.js'
+import { renderResponse } from '../render/result.js'
 import type { Render } from './renderer.js'
-
-function isRecord(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
 
 const handleRenderError: ErrorRequestHandler = (
   error: unknown,
@@ -18,8 +20,13 @@ const handleRenderError: ErrorRequestHandler = (
     return
   }
 
-  const type = isRecord(error) ? error.type : undefined
-  if (type === 'entity.parse.failed') {
+  const type =
+    typeof error === 'object' && error !== null && 'type' in error
+      ? error.type
+      : undefined
+  if (error instanceof RenderInputError) {
+    res.status(400).json({ error: error.message })
+  } else if (type === 'entity.parse.failed') {
     res
       .status(400)
       .json({ error: 'Send a valid JSON object, for example {"props":{}}.' })
@@ -46,28 +53,14 @@ const handleRenderError: ErrorRequestHandler = (
 export function renderRoute(render: Render) {
   const renderApi = express.Router()
 
-  renderApi.post('/', express.json({ limit: '64kb' }), async (req, res) => {
-    const body: unknown = req.body
-
-    if (!isRecord(body)) {
-      res.status(400).json({
-        error:
-          'The request body must be a JSON object. Send {} with Content-Type: application/json to use default props.',
-      })
-      return
-    }
-
-    if (body.props !== undefined && !isRecord(body.props)) {
-      res.status(400).json({
-        error:
-          '"props" must be a JSON object, for example {"props":{"title":"Hello"}}.',
-      })
-      return
-    }
-
-    const html = await render(body.props)
-    res.json({ html })
-  })
+  renderApi.post(
+    '/',
+    express.json({ limit: MAX_REQUEST_BYTES }),
+    async (req, res) => {
+      const request = parseRenderRequest(req.body)
+      res.json(renderResponse(await render(request.props), request))
+    },
+  )
 
   renderApi.use(handleRenderError)
 
