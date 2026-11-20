@@ -4,19 +4,49 @@ The default origin is `http://127.0.0.1:9901`. Development and production expose
 
 ## POST /render
 
-Send `Content-Type: application/json` and a JSON object. The optional `props` object becomes the root component's props for this request. Send `{}` to use component defaults. The JSON body limit is 64 KiB (65,536 bytes).
+Send a JSON object with `Content-Type: application/json`. The body limit is 64 KiB (65,536 bytes). All request fields are optional.
+
+| Field     | Type                 | Default  | Meaning                                                            |
+| --------- | -------------------- | -------- | ------------------------------------------------------------------ |
+| `props`   | JSON object          | `{}`     | Props passed to the root component.                                |
+| `format`  | `"html"` or `"json"` | `"html"` | Controls how the `head` field is represented in the JSON response. |
+| `hydrate` | Boolean              | `false`  | Includes the browser entry and serialized props for hydration.     |
+
+Send `{}` to render the component with its prop defaults.
 
 ```json
 { "props": { "title": "Hello" } }
 ```
 
-With the component in the [quick start](../README.md), HTTP 200 returns:
+With the component in the [quick start](../README.md), HTTP 200 returns the following JSON.
 
 ```json
-{ "html": "<h1>Hello</h1>" }
+{ "head": "", "content": "<h1>Hello</h1>" }
 ```
 
-The response contains a fragment suitable for embedding in a backend-generated page. The caller owns the surrounding document, asset loading and any hydration of that fragment. The current request contract uses only `props`.
+`content` is the rendered HTML fragment. The caller owns the document and wraps that fragment in `<div id="app">` when using hydration. `head` contains stylesheet entries and any HTML sent to `head` by Vue's native `<Teleport to="head">`, even with hydration disabled. Place it inside the document's `<head>`.
+
+With `format: "html"`, `head` is directly embeddable markup. With `format: "json"`, it is an array in document order. VueForge-generated entries have a `tag` string and an `attrs` object, plus a `content` string when they have inner content. Teleported entries have the shape `{ "html": "..." }`. Treat those entries as raw HTML from trusted project components. Serialize the structured entries as their indicated HTML elements if you use them in a page.
+
+### Hydrating a backend page
+
+Send `"hydrate": true` and insert the returned head and content into your document. Use this layout with the default HTML format.
+
+```html
+<!doctype html>
+<html lang="en">
+  <head>
+    <!-- Insert head here -->
+  </head>
+  <body>
+    <div id="app"><!-- Insert content here --></div>
+  </body>
+</html>
+```
+
+Keep the returned head nodes in the document when the modules execute. VueForge embeds request props as escaped JSON in `<script type="application/json" id="vueforge-props">`. The browser can read those props, so pass values that are safe to expose to the page. Development includes the `/@vite/client` and `/@vueforge/client` modules. Production uses a hashed client entry from the build.
+
+Root-relative asset URLs resolve against the page's origin. If VueForge listens on a separate port in production, serve the build's client assets from the backend origin or forward asset requests to VueForge. In development, a proxy can keep your backend page routes local and forward other GET requests and WebSocket upgrades to VueForge. The upgrades carry Vite HMR on the same origin.
 
 ### Calling from Python
 
@@ -30,19 +60,21 @@ request = Request(
     headers={"Content-Type": "application/json"},
 )
 with urlopen(request, timeout=5) as response:
-    print(json.load(response)["html"])
+    result = json.load(response)
+    print(result["head"])
+    print(result["content"])
 ```
 
 ### Handling errors
 
 Render errors use a JSON body with an `error` string. Use the HTTP status to choose how to handle a failure. The message is for the person diagnosing it.
 
-| Status | Cause                                                 | Action                                                                                |
-| ------ | ----------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| 400    | Malformed JSON, a non-object body, or invalid `props` | Send a JSON object with the JSON content type. If present, `props` must be an object. |
-| 413    | Body exceeds 64 KiB                                   | Reduce the data passed to the component.                                              |
-| 415    | Unsupported charset or content encoding               | Send uncompressed UTF-8 JSON.                                                         |
-| 500    | SSR threw while handling the render                   | Inspect the VueForge process log for the original exception.                          |
+| Status | Cause                                                        | Action                                                                       |
+| ------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| 400    | Malformed JSON, a non-object body, or invalid request fields | Send a JSON object with the JSON content type and use the field types above. |
+| 413    | Body exceeds 64 KiB                                          | Reduce the data passed to the component.                                     |
+| 415    | Unsupported charset or content encoding                      | Send uncompressed UTF-8 JSON.                                                |
+| 500    | SSR threw while handling the render                          | Inspect the VueForge process log for the original exception.                 |
 
 For example, sending `{"props":[]}` returns HTTP 400 and:
 
@@ -54,7 +86,7 @@ For example, sending `{"props":[]}` returns HTTP 400 and:
 
 ## GET /
 
-Returns an HTML document rendered with the component's default props and a module script that hydrates the page. In development Vite also injects its browser client for HMR.
+Returns an HTML preview using the component's default props and hydration. In development the preview also loads Vite's browser client for HMR.
 
 ## GET /healthz
 

@@ -1,6 +1,6 @@
 # VueForge
 
-VueForge runs a persistent Vue server-side renderer. Keep routes and business logic in your backend, send JSON props over HTTP, and receive HTML rendered by your project's `src/App.vue`. For browser development, VueForge also serves a hydrated page with Vite hot module replacement (HMR).
+VueForge renders your project's `src/App.vue` on the server. Your backend owns routes and business logic. Send JSON props over HTTP or stdin and get the page's head and body fragments, with optional browser hydration. In development, VueForge serves a hydrated preview with Vite hot module replacement (HMR).
 
 ## Try your first render
 
@@ -24,7 +24,7 @@ From that project's root, run `npx vueforge serve --dev`. Open `http://127.0.0.1
 curl --json '{"props":{"title":"Hello"}}' http://127.0.0.1:9901/render
 ```
 
-The response is `{"html":"<h1>Hello</h1>"}`. Edit the component to see changes in development. Stop the development server with Ctrl+C before starting production on the same port.
+The response is `{"head":"","content":"<h1>Hello</h1>"}`. Edit the component to see changes in development. Stop the development server with Ctrl+C before starting production on the same port.
 
 ## Build and serve
 
@@ -35,10 +35,16 @@ npx vueforge serve
 
 Run both commands from the same project root. The build creates browser and server artifacts under `.vueforge/`. The production process loads them at startup. After building a new version, restart the process to load it.
 
+For a single render after building, pipe a JSON request to `npx vueforge render`. The command writes the same JSON response to stdout and exits without opening an HTTP listener.
+
+```sh
+printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render
+```
+
 ## Guides
 
 - [CLI and configuration](docs/configuration.md) covers commands, defaults, overrides, and Vite integration.
-- [HTTP API](docs/http-api.md) covers the three routes, request and response formats, and errors.
+- [HTTP API](docs/http-api.md) covers the three routes, response formats, and how to hydrate a page served by your backend.
 - [Renderer architecture](docs/architecture.md) explains hydration, request isolation, HMR, production artifacts, and planned features.
 - [Contributing](CONTRIBUTING.md), [releases](docs/releases.md), and [security reporting](SECURITY.md) describe project maintenance.
 
