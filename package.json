@@ -25,8 +25,8 @@
     "vueforge": "bin/vueforge"
   },
   "scripts": {
-    "build": "tsc -p tsconfig.build.json",
-    "typecheck": "tsc --noEmit",
+    "build": "node node_modules/typescript7/bin/tsc -p tsconfig.build.json",
+    "typecheck": "node node_modules/typescript7/bin/tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
@@ -45,7 +45,8 @@
     "@types/node": "^26.6.6",
     "eslint": "^10.15.0",
     "prettier": "^3.10.1",
-    "typescript": "^7.0.2",
-    "typescript-eslint": "^8.73.0"
+    "typescript": "~6.0.3",
+    "typescript-eslint": "^8.73.0",
+    "typescript7": "npm:typescript@^7.0.2"
   }
 }
