@@ -13,11 +13,15 @@ catalog entry with the `template` query parameter.
 
 ```sh
 npx vueforge serve --dev
+```
 
+```sh
 curl -X POST 'http://127.0.0.1:9901/render?template=home&format=html' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"title":"Welcome to the catalog"}}'
+```
 
+```sh
 curl -X POST 'http://127.0.0.1:9901/render?template=invoice&format=html' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"number":"A-42","total":"R$ 129,90"}}'
@@ -25,6 +29,25 @@ curl -X POST 'http://127.0.0.1:9901/render?template=invoice&format=html' \
 
 The `template` query value is separate from the request context. The JSON body
 can contain any application-specific data needed by the selected component.
+
+## Unknown template
+
+Requesting a name that was not found while scanning `src/pages` is rejected
+before Vue SSR runs:
+
+```sh
+curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The server returns `400` with the names discovered in the directory:
+
+```json
+{
+  "error": "Unknown template \"missing\". Choose one of: home, invoice."
+}
+```
 
 ## Production
 
