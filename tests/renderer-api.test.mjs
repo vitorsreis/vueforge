@@ -14,10 +14,13 @@ async function createProject(t, config, files) {
   await mkdir(scratch, { recursive: true })
   const root = await mkdtemp(join(scratch, 'renderer-api-'))
   t.after(() => rm(root, { recursive: true, force: true, maxRetries: 3 }))
-  for (const [name, content] of Object.entries({
-    'vueforge.config.ts': `export default ${config}`,
+  const projectFiles = {
+    ...(config === undefined
+      ? {}
+      : { 'vueforge.config.ts': `export default ${config}` }),
     ...files,
-  })) {
+  }
+  for (const [name, content] of Object.entries(projectFiles)) {
     const file = join(root, name)
     await mkdir(join(file, '..'), { recursive: true })
     await writeFile(file, content)
@@ -50,6 +53,54 @@ test('public renderer renders development requests without an HTTP framework', a
       { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
     ],
     content: '<h1>Development</h1>',
+  })
+})
+
+test('public renderer accepts an inline config and ignores the project config file', async (t) => {
+  const root = await createProject(t, undefined, {
+    'vueforge.config.ts': "export default { main: 'src/Missing.vue' }",
+    'src/App.vue': '<template><h1>Inline config</h1></template>',
+  })
+
+  const renderer = await createVueforgeRenderer({
+    root,
+    mode: 'development',
+    config: { main: 'src/App.vue', vite: { server: { hmr: false } } },
+  })
+  t.after(() => renderer.close())
+
+  const response = await renderer.render({ context: {}, format: 'json' })
+  assert.equal(response.status, 200)
+  assert.deepEqual(response.body, {
+    head: [
+      { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+      { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
+    ],
+    content: '<h1>Inline config</h1>',
+  })
+})
+
+test('public renderer accepts a custom config path', async (t) => {
+  const root = await createProject(t, undefined, {
+    'custom/vueforge.server.ts': "export default { main: 'src/App.vue' }",
+    'src/App.vue': '<template><h1>Custom config</h1></template>',
+  })
+
+  const renderer = await createVueforgeRenderer({
+    root,
+    mode: 'development',
+    config: 'custom/vueforge.server.ts',
+  })
+  t.after(() => renderer.close())
+
+  const response = await renderer.render({ context: {}, format: 'json' })
+  assert.equal(response.status, 200)
+  assert.deepEqual(response.body, {
+    head: [
+      { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+      { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
+    ],
+    content: '<h1>Custom config</h1>',
   })
 })
 

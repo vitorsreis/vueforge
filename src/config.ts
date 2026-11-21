@@ -93,8 +93,12 @@ export async function loadProjectConfig(
   env: ConfigEnv,
   configFile?: string,
   explicitRoot?: string,
+  inlineConfig?: Record<string, unknown>,
 ) {
-  const file = await resolveProjectConfigFile(root, configFile)
+  const file =
+    inlineConfig === undefined
+      ? await resolveProjectConfigFile(root, configFile)
+      : undefined
 
   let projectConfig
   if (file) {
@@ -114,7 +118,10 @@ export async function loadProjectConfig(
   }
 
   const viteConfig = await loadConfigFromFile(env, undefined, root)
-  const config = (projectConfig?.config ?? {}) as Record<string, unknown>
+  const config = {
+    ...((projectConfig?.config ?? {}) as Record<string, unknown>),
+    ...(inlineConfig ?? {}),
+  }
   if (
     config.vite !== undefined &&
     (typeof config.vite !== 'object' ||

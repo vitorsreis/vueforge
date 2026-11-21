@@ -24,9 +24,15 @@ export interface VueforgeRendererOptions {
   root?: string
   /** Runtime mode. Defaults to `production`. */
   mode?: VueforgeRendererMode
-  /** Configuration file relative to `root`. */
-  configFile?: string
+  /** Configuration file path or inline render configuration. */
+  config?: string | VueforgeRendererConfig
 }
+
+/** Configuration used by a framework-neutral renderer. */
+export type VueforgeRendererConfig = Omit<
+  VueforgeConfig,
+  'root' | 'server' | 'tempDir'
+>
 
 /** Request passed to a public Vueforge renderer. */
 export interface VueforgeRenderRequest {
@@ -95,7 +101,8 @@ export interface VueforgeRenderer {
  * The returned `render` method is transport-neutral. A custom HTTP, RPC, or
  * process adapter can map its `status`, `headers`, and `body` to its own
  * response type. Each call receives a complete request context and may select
- * a named catalog template.
+ * a named catalog template. The renderer can load a project configuration
+ * file or use an inline configuration object.
  *
  * @param options - Project and runtime options.
  * @returns A renderer that must be closed when the host process shuts down.
@@ -122,11 +129,20 @@ export async function createVueforgeRenderer(
 ): Promise<VueforgeRenderer> {
   const mode = options.mode ?? 'production'
   const requestedRoot = resolve(options.root ?? process.cwd())
-  const config: VueforgeConfig = await loadProjectConfig(
-    requestedRoot,
-    { command: 'serve', mode },
-    options.configFile,
-  )
+  const config: VueforgeConfig =
+    typeof options.config === 'object'
+      ? await loadProjectConfig(
+          requestedRoot,
+          { command: 'serve', mode },
+          undefined,
+          requestedRoot,
+          options.config,
+        )
+      : await loadProjectConfig(
+          requestedRoot,
+          { command: 'serve', mode },
+          options.config,
+        )
   const root = resolve(config.root ?? requestedRoot)
   const limits = resolveRenderLimits(config)
   const sources =
@@ -136,13 +152,7 @@ export async function createVueforgeRenderer(
 
   const service =
     mode === 'development'
-      ? await developmentRenderer(
-          root,
-          config,
-          undefined,
-          config.server?.host,
-          config.server?.port,
-        )
+      ? await developmentRenderer(root, config)
       : await productionRenderer(
           resolveBuildOutputDir(root, config.build?.outDir),
           resolveAssetBase(config.origin, config.base),

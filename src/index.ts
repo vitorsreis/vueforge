@@ -9,6 +9,7 @@ export {
   type VueforgeRenderJsonBody,
   type VueforgeRenderRequest,
   type VueforgeRenderResponse,
+  type VueforgeRendererConfig,
   type VueforgeRenderer,
   type VueforgeRendererMode,
   type VueforgeRendererOptions,
