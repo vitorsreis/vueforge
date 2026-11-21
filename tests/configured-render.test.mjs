@@ -221,6 +221,54 @@ test('validates configured render sources before building', async (t) => {
 })
 
 test(
+  'loads vite.config.ts and merges it with inline Vite options',
+  { timeout: 60000 },
+  async (t) => {
+    const cwd = await project(
+      t,
+      { vite: { define: { __VUEFORGE_INLINE__: JSON.stringify('inline') } } },
+      {
+        'src/App.vue': `<script setup>
+import Label from '@/Label.vue'
+const inline = __VUEFORGE_INLINE__
+</script>
+<template><main><Label /> {{ inline }}</main></template>`,
+        'src/Label.vue': '<template><span>Alias works</span></template>',
+        'vite.config.ts': `
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+})`,
+      },
+    )
+
+    await serve(cwd, async (post) => {
+      const response = await post({})
+      assert.equal(response.status, 200, await response.clone().text())
+      assert.match(
+        (await response.json()).content,
+        /Alias works<\/span> inline/,
+      )
+    })
+
+    const build = run(cwd, 'build')
+    assert.equal(build.status, 0, build.stderr)
+    const render = run(cwd, 'render', {})
+    assert.equal(render.status, 0, render.stderr)
+    assert.match(
+      JSON.parse(render.stdout).content,
+      /Alias works<\/span> inline/,
+    )
+  },
+)
+
+test(
   'isolates each context and serializes it only for hydration',
   { timeout: 60000 },
   async (t) => {

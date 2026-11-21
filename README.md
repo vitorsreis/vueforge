@@ -89,7 +89,7 @@ Use `--host` and `--port` with `serve` to override the configuration for one run
 
 ## Configuration
 
-No configuration file is required for `src/App.vue`, `127.0.0.1`, port `9901`, and `.vueforge`. Add `vueforge.config.ts` when the project needs a different source, listener, artifact directory, or Vite option.
+No configuration file is required for `src/App.vue`, `127.0.0.1`, port `9901`, and `.vueforge`. VueForge also loads a standard `vite.config.ts` when the project has one. Add `vueforge.config.ts` when the project needs a different source, listener, artifact directory, or VueForge-specific Vite override.
 
 ```ts
 import { defineConfig } from '@vitorsreis/vueforge'
@@ -102,7 +102,7 @@ export default defineConfig({
 })
 ```
 
-See [CLI and configuration](docs/configuration.md) for source modes and request context.
+See [CLI and configuration](docs/configuration.md) for source modes and request context. Development render failures can return a detailed HTML or JSON diagnostic, as described in [HTTP API](docs/http-api.md#development-diagnostics).
 
 ## HTTP integration
 

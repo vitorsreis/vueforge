@@ -21,3 +21,5 @@ The render request is limited to a 64 KiB JSON body. `props` and `context` are i
 An `entry` factory decides which request data reaches the Vue app. Component sources receive only props declared by the root component. Treat generated `head` and `content` as trusted output from the configured project and escape or sanitize untrusted values before passing them into Vue.
 
 Production rendering limits concurrent work, applies a deadline, bounds the transferred render output, and isolates each render worker. These limits do not replace operating-system permissions, process isolation, network controls, or resource quotas.
+
+Detailed render diagnostics are available only from development requests. Keep development mode private because its HTML and JSON error responses can include project source lines and stack traces. Production responses keep those details out of the HTTP body.

@@ -23,8 +23,10 @@ interface ProjectOptions {
   /**
    * Application-specific Vite options.
    *
-   * VueForge supplies the project root, Vue plugin, virtual entrypoints, base
-   * URL, and output layout. These options apply to development and both builds.
+   * VueForge merges this object on top of the project's `vite.config.ts`, when
+   * present. It supplies the project root, Vue plugin, virtual entrypoints,
+   * base URL, and output layout. These options apply to development and both
+   * builds.
    */
   vite?: UserConfig
 }

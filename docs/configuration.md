@@ -112,9 +112,36 @@ Use an entry factory to decide exactly which request values reach the app. When 
 
 ## Vite options
 
-Put application-specific Vite settings under `vite`. Aliases, `define` values, and additional plugins are supported.
+VueForge loads `vite.config.ts` when it exists. It uses the same `command` and `mode` values as the current CLI command, so Vite config functions can distinguish development and production.
 
-VueForge controls the project root, base URL, Vue plugin, virtual client and server entries, and build output directories. It also disables discovery of a separate Vite config file. Keep output and entrypoint changes in VueForge configuration so development, build, and production use the same layout.
+Put project-specific Vite settings in `vite.config.ts`:
+
+```ts
+import { fileURLToPath, URL } from 'node:url'
+import { defineConfig } from 'vite'
+
+export default defineConfig({
+  resolve: {
+    alias: {
+      '@': fileURLToPath(new URL('./src', import.meta.url)),
+    },
+  },
+})
+```
+
+The optional `vite` property in `vueforge.config.ts` is merged on top of the Vite config file. Use it for VueForge-specific overrides or settings that belong beside the source selection:
+
+```ts
+import { defineConfig } from '@vitorsreis/vueforge'
+
+export default defineConfig({
+  vite: {
+    define: { __APP_NAME__: JSON.stringify('Orders') },
+  },
+})
+```
+
+VueForge controls the project root, base URL, Vue plugin, virtual client and server entries, and build output directories. Those internal values take precedence so development, build, and production keep the same entrypoints and artifact layout.
 
 ## Build artifacts
 

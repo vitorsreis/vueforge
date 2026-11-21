@@ -90,21 +90,13 @@ Use `hydrate: true` when the backend will serve a page that the browser must act
 
 Development responses include `/@vite/client` and `/@vueforge/client`. Production responses include the hashed client entry from the build. Keep all returned head nodes in the document. Root-relative asset URLs must resolve from the page origin. A reverse proxy can forward development asset requests and the Vite WebSocket to VueForge.
 
-### Calling from Python
+### Calling with curl
 
-```python
-import json
-from urllib.request import Request, urlopen
-
-request = Request(
-    "http://127.0.0.1:9901/render",
-    data=json.dumps({"props": {"title": "Hello"}}).encode("utf-8"),
-    headers={"Content-Type": "application/json"},
-)
-with urlopen(request, timeout=5) as response:
-    result = json.load(response)
-    print(result["head"])
-    print(result["content"])
+```sh
+curl --request POST \
+  --header 'Content-Type: application/json' \
+  --data '{"props":{"title":"Hello"}}' \
+  http://127.0.0.1:9901/render
 ```
 
 ## `GET /`
@@ -150,3 +142,36 @@ Error responses use this shape:
 | `504`  | A production render exceeded its five-second deadline.                      |
 
 Production limits concurrent renders to four slots and limits the transferred render result to 4 MiB. Development uses Vite's module runner and can still be blocked by synchronous project code.
+
+### Development diagnostics
+
+Development SSR errors include normalized Vite and Vue details. JSON remains the default for programmatic clients. Request an HTML diagnostic page with `?error=html` or `Accept: text/html`:
+
+```sh
+curl --request POST \
+  --header 'Accept: text/html' \
+  --header 'Content-Type: application/json' \
+  --data '{}' \
+  http://127.0.0.1:9901/render
+```
+
+The page shows the error message, plugin, file location, Vite frame, nearby source lines, and stack trace. Request `?error=json` or `Accept: application/json` for the same data in JSON:
+
+```json
+{
+  "error": "Unexpected token",
+  "details": {
+    "name": "SyntaxError",
+    "message": "Unexpected token",
+    "file": "src/App.vue",
+    "line": 2,
+    "column": 10,
+    "plugin": "vite:vue",
+    "frame": "...",
+    "source": "...",
+    "stack": "..."
+  }
+}
+```
+
+The standard Vite browser overlay is disabled in development. Hydrated pages use the VueForge overlay, which listens to Vite's `vite:error` HMR event and displays the message, location, source frame, and stack without replacing the page.

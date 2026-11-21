@@ -10,6 +10,8 @@ npx vueforge serve --dev
 
 Vite stays alive for the process lifetime. Component edits are picked up by later SSR requests. Hydrated pages use Vite HMR. Keep development mode private because it serves Vite middleware and has no authentication.
 
+When a module fails during HMR, VueForge displays its own error overlay with the Vite message, file location, source frame, and stack trace. A failed `POST /render` can return the same diagnostic information as an HTML page or JSON by using the options described in [HTTP API](http-api.md#development-diagnostics).
+
 ## Production lifecycle
 
 Build once, then run the server from the same project root:

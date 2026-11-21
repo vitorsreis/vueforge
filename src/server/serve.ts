@@ -51,7 +51,14 @@ export async function serveProject(
     })
   })
 
-  app.use('/render', renderRoute(renderer.render, { interruptible: !dev }))
+  app.use(
+    '/render',
+    renderRoute(renderer.render, {
+      development: dev,
+      interruptible: !dev,
+      ...(dev ? { root } : {}),
+    }),
+  )
   app.use(renderer.middleware)
 
   try {

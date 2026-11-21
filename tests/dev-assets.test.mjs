@@ -133,7 +133,10 @@ defineProps({ show: Boolean, unused: Boolean })
       const origin = `http://127.0.0.1:${server.address().port}`
       const entry = await globalThis.fetch(`${origin}/@vueforge/client`)
       assert.equal(entry.status, 200)
-      assert.match(await entry.text(), /vueforge-props/)
+      const entryCode = await entry.text()
+      assert.match(entryCode, /vueforge-props/)
+      assert.match(entryCode, /vite:error/)
+      assert.match(entryCode, /data-vueforge-error-overlay/)
       const styleModule = await globalThis.fetch(
         `${origin}/src/Child.vue?${scoped.attrs['data-vite-dev-id'].split('?')[1]}`,
       )

@@ -2,7 +2,7 @@ import { existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
 import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
-import { loadConfigFromFile, normalizePath } from 'vite'
+import { loadConfigFromFile, mergeConfig, normalizePath } from 'vite'
 import type { ConfigEnv } from 'vite'
 
 import type { VueForgeConfig } from './index.js'
@@ -62,17 +62,15 @@ export async function resolveAppSource(
 export async function loadProjectConfig(root: string, env: ConfigEnv) {
   const file = join(root, 'vueforge.config.ts')
 
-  if (!existsSync(file)) {
-    return {}
-  }
-
-  const loaded = await loadConfigFromFile(env, file, root)
-
-  if (!loaded) {
+  const projectConfig = existsSync(file)
+    ? await loadConfigFromFile(env, file, root)
+    : undefined
+  if (existsSync(file) && !projectConfig) {
     throw new Error('Could not load vueforge.config.ts.')
   }
 
-  const config = loaded.config as Record<string, unknown>
+  const viteConfig = await loadConfigFromFile(env, undefined, root)
+  const config = (projectConfig?.config ?? {}) as Record<string, unknown>
   if (
     config.vite !== undefined &&
     (typeof config.vite !== 'object' ||
@@ -80,6 +78,13 @@ export async function loadProjectConfig(root: string, env: ConfigEnv) {
       Array.isArray(config.vite))
   ) {
     throw new Error('vueforge.config.ts: vite must be an object.')
+  }
+
+  if (viteConfig) {
+    config.vite = mergeConfig(
+      viteConfig.config,
+      (config.vite ?? {}) as Record<string, unknown>,
+    )
   }
 
   return config as VueForgeConfig

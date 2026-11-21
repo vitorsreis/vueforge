@@ -15,49 +15,83 @@ import {
   type RenderLimits,
 } from './render-capacity.js'
 import type { Render } from './renderer.js'
+import { normalizeRenderError } from './render-error.js'
+import { renderErrorPage } from './render-error-page.js'
 
-const handleRenderError: ErrorRequestHandler = (
-  error: unknown,
-  _req,
-  res,
-  next,
-) => {
-  if (res.headersSent) {
-    next(error)
-    return
-  }
+interface RenderRouteOptions extends RenderLimits {
+  development?: boolean
+  interruptible?: boolean
+  root?: string
+}
 
-  const type =
-    typeof error === 'object' && error !== null && 'type' in error
-      ? error.type
-      : undefined
-  if (error instanceof RenderBusyError) {
-    res.set('Retry-After', '1').status(503).json({ error: error.message })
-  } else if (error instanceof RenderTimeoutError) {
-    res.status(504).json({ error: error.message })
-  } else if (error instanceof RenderInputError) {
-    res.status(400).json({ error: error.message })
-  } else if (type === 'entity.parse.failed') {
-    res
-      .status(400)
-      .json({ error: 'Send a valid JSON object, for example {"props":{}}.' })
-  } else if (type === 'entity.too.large') {
-    res
-      .status(413)
-      .json({ error: 'Request body exceeds 64 KiB. Reduce the JSON payload.' })
-  } else if (
-    type === 'charset.unsupported' ||
-    type === 'encoding.unsupported'
-  ) {
-    res.status(415).json({
-      error: 'Unsupported request encoding. Send uncompressed UTF-8 JSON.',
-    })
-  } else {
-    console.error(error)
-    res.status(500).json({
-      error:
-        'Vue SSR failed. Check the VueForge server log for the component error.',
-    })
+function wantsHtmlError(req: express.Request): boolean {
+  const requested = req.query.error
+  if (requested === 'html') return true
+  if (requested === 'json') return false
+  return /(?:^|,)\s*text\/html(?:\s*;|\s*,|$)/i.test(req.get('accept') ?? '')
+}
+
+function renderErrorHandler({
+  development,
+  root,
+}: Pick<RenderRouteOptions, 'development' | 'root'>): ErrorRequestHandler {
+  return (error: unknown, req, res, next) => {
+    if (res.headersSent) {
+      next(error)
+      return
+    }
+
+    const type =
+      typeof error === 'object' && error !== null && 'type' in error
+        ? error.type
+        : undefined
+    if (error instanceof RenderBusyError) {
+      res.set('Retry-After', '1').status(503).json({ error: error.message })
+    } else if (error instanceof RenderTimeoutError) {
+      res.status(504).json({ error: error.message })
+    } else if (error instanceof RenderInputError) {
+      res.status(400).json({ error: error.message })
+    } else if (type === 'entity.parse.failed') {
+      res
+        .status(400)
+        .json({ error: 'Send a valid JSON object, for example {"props":{}}.' })
+    } else if (type === 'entity.too.large') {
+      res.status(413).json({
+        error: 'Request body exceeds 64 KiB. Reduce the JSON payload.',
+      })
+    } else if (
+      type === 'charset.unsupported' ||
+      type === 'encoding.unsupported'
+    ) {
+      res.status(415).json({
+        error: 'Unsupported request encoding. Send uncompressed UTF-8 JSON.',
+      })
+    } else {
+      console.error(error)
+      if (development && root) {
+        void normalizeRenderError(error, root)
+          .then((details) => {
+            if (wantsHtmlError(req)) {
+              res
+                .status(500)
+                .set({
+                  'Cache-Control': 'no-store',
+                  'X-Content-Type-Options': 'nosniff',
+                })
+                .type('html')
+                .send(renderErrorPage(details))
+              return
+            }
+            res.status(500).json({ error: details.message, details })
+          })
+          .catch(next)
+        return
+      }
+      res.status(500).json({
+        error:
+          'Vue SSR failed. Check the VueForge server log for the component error.',
+      })
+    }
   }
 }
 
@@ -99,13 +133,10 @@ function boundRender(
 
 export function renderRoute(
   render: Render,
-  {
-    interruptible = false,
-    ...limits
-  }: RenderLimits & { interruptible?: boolean } = {},
+  { interruptible = false, ...options }: RenderRouteOptions = {},
 ) {
   const renderApi = express.Router()
-  const renderRequest = interruptible ? render : boundRender(render, limits)
+  const renderRequest = interruptible ? render : boundRender(render, options)
 
   renderApi.post(
     '/',
@@ -117,7 +148,7 @@ export function renderRoute(
     },
   )
 
-  renderApi.use(handleRenderError)
+  renderApi.use(renderErrorHandler(options))
 
   return renderApi
 }

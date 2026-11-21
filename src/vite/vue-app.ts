@@ -101,7 +101,54 @@ async function hydrate() {
   const app = await createApp(readData('vueforge-context'), readData('vueforge-props'))
   app.mount('#app')
 }
-hydrate()`
+hydrate()
+function removeErrorOverlay() {
+  document.querySelector('[data-vueforge-error-overlay]')?.remove()
+}
+function showErrorOverlay(payload) {
+  const error = payload?.err ?? payload ?? {}
+  removeErrorOverlay()
+  const overlay = document.createElement('div')
+  overlay.dataset.vueforgeErrorOverlay = 'true'
+  Object.assign(overlay.style, {
+    background: '#171717',
+    color: '#f5f5f5',
+    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
+    inset: '0',
+    overflow: 'auto',
+    padding: '48px 24px',
+    position: 'fixed',
+    zIndex: '2147483647',
+  })
+  const content = document.createElement('div')
+  Object.assign(content.style, { margin: '0 auto', maxWidth: '1120px' })
+  const title = document.createElement('h1')
+  title.textContent = error.message ?? 'Vite update failed'
+  Object.assign(title.style, { color: '#fecaca', fontSize: 'clamp(28px, 5vw, 52px)' })
+  content.append(title)
+  const location = error.loc?.file ?? error.id
+  if (location) {
+    const meta = document.createElement('p')
+    meta.textContent = [location, error.loc?.line, error.loc?.column].filter(Boolean).join(':')
+    Object.assign(meta.style, { color: '#d4d4d4', fontFamily: 'ui-monospace, monospace' })
+    content.append(meta)
+  }
+  for (const [heading, value] of [['Source', error.frame], ['Stack trace', error.stack]]) {
+    if (!value) continue
+    const label = document.createElement('h2')
+    label.textContent = heading
+    const pre = document.createElement('pre')
+    pre.textContent = value
+    Object.assign(pre.style, { background: '#0f0f0f', border: '1px solid #4b2020', borderRadius: '10px', overflow: 'auto', padding: '18px', whiteSpace: 'pre' })
+    content.append(label, pre)
+  }
+  overlay.append(content)
+  document.body.append(overlay)
+}
+if (import.meta.hot) {
+  import.meta.hot.on('vite:error', showErrorOverlay)
+  import.meta.hot.on('vite:beforeUpdate', removeErrorOverlay)
+}`
       }
 
       if (id === '\0' + serverEntry) {

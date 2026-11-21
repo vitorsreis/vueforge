@@ -18,6 +18,7 @@ export async function developmentRenderer(
 ) {
   const source = await resolveAppSource(root, project)
   const config = project.vite ?? {}
+  const hmr = config.server?.hmr
 
   const vite = await createServer({
     ...vueViteConfig(root, config, source),
@@ -27,6 +28,10 @@ export async function developmentRenderer(
       host,
       port,
       middlewareMode: true,
+      hmr:
+        hmr === false
+          ? false
+          : { ...(typeof hmr === 'object' ? hmr : {}), overlay: false },
       ws:
         config.server?.ws === false ? false : { ...config.server?.ws, server },
     },
