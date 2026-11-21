@@ -5,6 +5,7 @@ test('the package root exposes only the public helpers at runtime', async () => 
   const api = await import('@vitorsreis/vueforge')
   assert.deepEqual(Object.keys(api).sort(), [
     'createVueforgeApp',
+    'createVueforgeRenderer',
     'defineConfig',
   ])
   assert.deepEqual(api.defineConfig({ server: { port: 4300 } }), {

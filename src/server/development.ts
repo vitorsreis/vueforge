@@ -14,9 +14,9 @@ import { viteCorsOptions } from './http/cors.js'
 export async function developmentRenderer(
   root: string,
   project: VueforgeConfig,
-  server: Server,
-  host: string,
-  port: number,
+  server?: Server,
+  host = '127.0.0.1',
+  port = 9901,
 ) {
   const sources = await resolveAppSources(root, project)
   const config = project.vite ?? {}
@@ -38,8 +38,14 @@ export async function developmentRenderer(
               ...(typeof hmr === 'object' ? hmr : {}),
               overlay: false,
             },
-      ws:
-        config.server?.ws === false ? false : { ...config.server?.ws, server },
+      ...(server === undefined
+        ? {}
+        : {
+            ws:
+              config.server?.ws === false
+                ? false
+                : { ...config.server?.ws, server },
+          }),
     },
   })
 

@@ -1,6 +1,19 @@
 import type { UserConfig } from 'vite'
 import type { Component } from 'vue'
 
+export {
+  createVueforgeRenderer,
+  type VueforgeRenderBody,
+  type VueforgeRenderErrorBody,
+  type VueforgeRenderErrorDetails,
+  type VueforgeRenderJsonBody,
+  type VueforgeRenderRequest,
+  type VueforgeRenderResponse,
+  type VueforgeRenderer,
+  type VueforgeRendererMode,
+  type VueforgeRendererOptions,
+} from './renderer.js'
+
 /** A structured element accepted by document and head configuration. */
 export interface HeadTag {
   tag: string

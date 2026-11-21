@@ -22,6 +22,7 @@ import { serveStdio } from './transports/stdio.js'
 import type { ServerTransport } from './transports/http.js'
 import { queryBoolean } from '../render/query.js'
 import { formatStartupMessage } from './startup-message.js'
+import { createRenderHandlerOptions } from './render/handler-options.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../../package.json') as { version: string }
@@ -46,26 +47,6 @@ function transportFromOptions(
   options: ServeProjectOptions,
 ): ServerTransport {
   return resolveServerTransport(root, config, options)
-}
-
-function handlerOptions(
-  config: VueforgeConfig,
-  limits: ReturnType<typeof resolveRenderLimits>,
-  extra: { development?: boolean; interruptible?: boolean; root?: string } = {},
-  sources?: Awaited<ReturnType<typeof resolveAppSources>>,
-) {
-  return {
-    ...limits,
-    defaultFormat: config.format ?? ('json' as const),
-    ...(config.document === undefined ? {} : { document: config.document }),
-    ...(sources?.kind !== 'templates'
-      ? {}
-      : {
-          requireTemplate: true,
-          templateNames: Object.keys(sources.templates),
-        }),
-    ...extra,
-  }
 }
 
 export async function serveProject(
@@ -100,7 +81,7 @@ export async function serveProject(
     )
     const handleRender = createRenderHandler(
       renderer.render,
-      handlerOptions(config, limits, {}, sources),
+      createRenderHandlerOptions(config, limits, {}, sources),
     )
     try {
       await serveStdio({
@@ -169,7 +150,7 @@ export async function serveProject(
     '/render',
     renderRoute(
       renderer.render,
-      handlerOptions(
+      createRenderHandlerOptions(
         config,
         limits,
         {
