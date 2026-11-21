@@ -134,15 +134,10 @@ export type VueforgeTemplateCatalog = Record<string, VueforgeTemplate>
 /**
  * Template catalog input accepted by `main`.
  *
- * A directory descriptor scans Vue files below `directory`. `pattern` is
- * matched against each project-relative file name and `extension` defaults to
- * `.vue`.
+ * A string selects a directory or a regular expression selects Vue files
+ * below `src`. A record maps request template names to Vue sources.
  */
-export type VueforgeTemplates =
-  | string
-  | RegExp
-  | { directory: string; pattern?: RegExp; extension?: string }
-  | VueforgeTemplateCatalog
+export type VueforgeTemplates = string | RegExp | VueforgeTemplateCatalog
 
 /** The single application source selected by `vueforge.config.ts`. */
 export type VueforgeMain =

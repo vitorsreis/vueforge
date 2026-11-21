@@ -18,7 +18,7 @@ loading, and caching decisions.
 ## Source model
 
 `main` resolves one component, inline SFC, entry module, directory, pattern,
-descriptor, named catalog, or factory. The request can select only a name from
+named catalog, or factory. The request can select only a name from
 a configured catalog.
 
 All application instances are created per render. The renderer does not retain

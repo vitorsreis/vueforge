@@ -10,7 +10,6 @@ import type {
   VueforgeMain,
   VueforgeTemplate,
   VueforgeTemplates,
-  VueforgeTemplateCatalog,
 } from '../index.js'
 
 export type AppTemplate =
@@ -167,33 +166,13 @@ async function resolveTemplateCatalog(
   let candidates: Record<string, VueforgeTemplate> = {}
   let directory: string | undefined
   let pattern: RegExp | undefined
-  let extension = '.vue'
   if (typeof value === 'string') {
     directory = value
   } else if (value instanceof RegExp) {
     directory = 'src'
     pattern = value
-  } else if (
-    typeof value === 'object' &&
-    'directory' in value &&
-    typeof value.directory === 'string'
-  ) {
-    const descriptor = value as {
-      directory: string
-      pattern?: RegExp
-      extension?: string
-    }
-    directory = descriptor.directory
-    pattern =
-      descriptor.pattern instanceof RegExp ? descriptor.pattern : undefined
-    extension = descriptor.extension ?? '.vue'
-    if (!/^\.[a-z0-9]+$/i.test(extension)) {
-      throw new Error(
-        'vueforge.config.ts: main.extension must be a file extension such as .vue.',
-      )
-    }
   } else {
-    candidates = value as VueforgeTemplateCatalog
+    candidates = value
   }
 
   if (directory) {
@@ -203,7 +182,7 @@ async function resolveTemplateCatalog(
         `vueforge.config.ts: main is not a directory: ${directory}`,
       )
     }
-    candidates = await templateFiles(root, file, pattern, extension)
+    candidates = await templateFiles(root, file, pattern)
   }
 
   const result: Record<string, AppTemplate> = {}
@@ -246,12 +225,6 @@ async function resolveMain(
       return {
         kind: 'component',
         template: await resolveTemplate(root, 'main', value as Component),
-      }
-    }
-    if ('directory' in value) {
-      return {
-        kind: 'templates',
-        templates: await resolveTemplateCatalog(root, value),
       }
     }
     return {

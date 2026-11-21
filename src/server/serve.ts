@@ -21,6 +21,7 @@ import { createCorsMiddleware } from './http/cors.js'
 import { serveStdio } from './transports/stdio.js'
 import type { ServerTransport } from './transports/http.js'
 import { queryBoolean } from '../render/query.js'
+import { formatStartupMessage } from './startup-message.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../../package.json') as { version: string }
@@ -217,7 +218,21 @@ export async function serveProject(
     transport.kind === 'unix'
       ? transport.path
       : `${transport.host.includes(':') ? `[${transport.host}]` : transport.host}:${String(transport.port)}`
-  console.log(`Vueforge listening on ${protocol}://${address}`)
+  const startupSources = sources ?? {
+    kind: 'component' as const,
+    template: { kind: 'component' as const, url: '/src/App.vue' },
+  }
+  console.log(
+    formatStartupMessage(
+      {
+        protocol,
+        address,
+        mode: dev ? 'development' : 'production',
+      },
+      config,
+      startupSources,
+    ),
+  )
 
   return { close }
 }

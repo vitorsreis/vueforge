@@ -81,7 +81,7 @@ test('resolves named catalogs from paths, inline SFCs, and imported components',
   })
 })
 
-test('resolves pattern and descriptor catalogs', async (t) => {
+test('resolves pattern catalogs', async (t) => {
   const root = await createRoot(t, {
     'src/pages/home.page.vue': '<template><p>Home</p></template>',
     'src/pages/invoice.page.vue': '<template><p>Invoice</p></template>',
@@ -94,12 +94,6 @@ test('resolves pattern and descriptor catalogs', async (t) => {
     'pages/home.page',
     'pages/invoice.page',
   ])
-
-  const descriptor = await resolveAppSources(root, {
-    main: { directory: 'src/pages', pattern: /home/, extension: '.vue' },
-  })
-  assert.equal(descriptor.kind, 'templates')
-  assert.deepEqual(Object.keys(descriptor.templates), ['home.page'])
 })
 
 test('rejects template names that target object prototypes', async (t) => {

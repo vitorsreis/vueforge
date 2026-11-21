@@ -9,7 +9,6 @@ and HTTP requests that can be opened in an HTTP client.
 - `component` imports a Vue component in the configuration.
 - `templates` scans a directory as a named catalog.
 - `pattern` scans files selected by a regular expression.
-- `descriptor` limits a catalog with `directory`, `pattern`, and `extension`.
 - `object` maps names to individual component and inline sources.
 - `handler` declares the request-scoped app factory directly in the config.
 

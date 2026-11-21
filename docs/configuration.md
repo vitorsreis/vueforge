@@ -22,7 +22,7 @@ Global options are `-r, --root`, `-c, --config`, `-h, --help`, and
 ## Application selection
 
 Configure one `main` source. It can be a component, inline SFC, entry module,
-directory, regular expression, descriptor, named object, or factory.
+directory, regular expression, named object, or factory.
 
 ### Component or inline SFC
 
@@ -80,9 +80,9 @@ request data in module-level mutable state.
 
 ### Template catalogs
 
-`main` can be a directory containing `.vue` files, a regular expression, a
-descriptor, or a named object. A request must include `template` in the query
-when this option is used. Directory names are
+`main` can be a directory containing `.vue` files, a regular expression, or a
+named object. A request must include `template` in the query when this option
+is used. Directory names are
 relative to the project root and become template names without `.vue`.
 
 ```ts
