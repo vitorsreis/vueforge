@@ -24,6 +24,7 @@
     "vueforge": "bin/vueforge"
   },
   "scripts": {
+    "prebuild": "node scripts/clean-build.mjs",
     "build": "node node_modules/typescript7/bin/tsc -p tsconfig.build.json",
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
@@ -38,7 +39,6 @@
     "bench:render": "npm run build && node benchmarks/render.mjs"
   },
   "dependencies": {
-    "@types/negotiator": "^0.6.5",
     "@vitejs/plugin-vue": "^6.0.11",
     "express": "^5.3.0",
     "host-validation-middleware": "0.1.4",
@@ -51,6 +51,7 @@
     "@eslint/js": "^10.0.1",
     "@types/express": "^5.0.6",
     "@types/node": "^26.6.6",
+    "@types/negotiator": "^0.6.5",
     "eslint": "^10.15.0",
     "playwright-core": "^1.65.1",
     "prettier": "^3.10.1",
