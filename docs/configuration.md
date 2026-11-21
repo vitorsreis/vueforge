@@ -75,6 +75,6 @@ VueForge supplies the Vue plugin, virtual entries, project root and base URL (`/
 ## Startup errors
 
 - **Missing component:** run development or build from the directory containing `src/App.vue`.
-- **Missing artifacts:** run `vueforge build` and verify that `vueforge serve` or `vueforge render` uses the same `tempDir`. Deploy both the `client/` and `server/` directories, including the hidden client manifest.
+- **Missing artifacts:** run `vueforge build` and verify that `vueforge serve` or `vueforge render` uses the same `tempDir`. Deploy both the `client/` and `server/` directories, including the hidden client manifest and `.vite/vueforge-assets.json`. Rebuild once when upgrading artifacts from an older VueForge version.
 - **Address already in use:** stop the existing listener or choose another port with `--port`.
 - **Config changes:** restart the CLI after editing listener or renderer configuration. Component edits use the development module graph.

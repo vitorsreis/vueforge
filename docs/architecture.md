@@ -29,12 +29,13 @@ The first Vite build emits the browser entry, styles and client manifest. The se
 .vueforge/
   client/
     .vite/manifest.json
+    .vite/vueforge-assets.json
     assets/
   server/
     entry.mjs
 ```
 
-Ship the contents of both directories together and keep the renderer runtime available. Production reads the manifest to find the stylesheet assets and the client entry used for hydration. Each CLI process imports the server entry once. `vueforge serve` also serves static assets from the client directory. When using `vueforge render`, the backend serves the client assets at the URLs returned in `head`. The project configuration must resolve the same artifact location on the deployed host. The source component is only required during development and build.
+Ship the contents of both directories together and keep the renderer runtime available. Production reads the manifest to find the stylesheet assets and the client entry used for hydration. The build also records every regular client output and copied public asset in `.vite/vueforge-assets.json`; production serves only those recorded files, including directory indexes. Rebuild once when upgrading artifacts from an older VueForge version. A build takes an exclusive `.build.lock` in `tempDir`, and a stale lock can be removed after confirming no build is running. Each CLI process imports the server entry once. `vueforge serve` also serves static assets from the client directory. When using `vueforge render`, the backend serves the client assets at the URLs returned in `head`. The project configuration must resolve the same artifact location on the deployed host. The source component is only required during development and build.
 
 ## Boundaries for contributors
 

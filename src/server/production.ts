@@ -14,33 +14,56 @@ function clientMiddleware(
   files: Set<string>,
 ): RequestHandler {
   return async (req, res, next) => {
-    if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    if (req.method !== 'GET' && req.method !== 'HEAD') {
+      next()
+      return
+    }
     let requested: string
     try {
       requested = decodeURIComponent(req.path)
     } catch {
-      return next()
+      next()
+      return
     }
-    if (!requested.startsWith('/')) return next()
+    if (!requested.startsWith('/')) {
+      next()
+      return
+    }
     let file = requested.slice(1)
     let redirectToDirectory = false
     if (!files.has(file)) {
       redirectToDirectory = !requested.endsWith('/')
       file += (redirectToDirectory ? '/' : '') + 'index.html'
-      if (!files.has(file)) return next()
+      if (!files.has(file)) {
+        next()
+        return
+      }
     }
 
     const path = join(clientDir, file)
     const actual = await realpath(path).catch(() => undefined)
-    if (!actual || relative(path, actual) !== '') return next()
-    if (!(await lstat(path).catch(() => undefined))?.isFile()) return next()
+    const relativePath = actual ? relative(clientDir, actual) : ''
+    if (
+      !actual ||
+      relativePath === '..' ||
+      relativePath.startsWith('../') ||
+      relativePath.includes('..\\')
+    ) {
+      next()
+      return
+    }
+    if (!(await lstat(actual).catch(() => undefined))?.isFile()) {
+      next()
+      return
+    }
     if (redirectToDirectory) {
       const queryStart = req.url.indexOf('?')
       const query = queryStart === -1 ? '' : req.url.slice(queryStart)
       const directory = requested.split('/').map(encodeURIComponent).join('/')
-      return res.redirect(301, directory + '/' + query)
+      res.redirect(301, directory + '/' + query)
+      return
     }
-    return res.sendFile(actual)
+    res.sendFile(file, { root: clientDir })
   }
 }
 

@@ -3,7 +3,7 @@ import { once } from 'node:events'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import test from 'node:test'
-import { fileURLToPath } from 'node:url'
+import { fileURLToPath, URL } from 'node:url'
 
 import express from 'express'
 
@@ -19,11 +19,14 @@ test('production records the files from the current build and serves copied publ
 
   const root = join(directory, 'project')
   const tempDir = join(directory, 'artifacts')
-  const publicDir = join(root, 'static', 'help page')
+  const publicDir = join(root, 'public', 'help page')
   await mkdir(publicDir, { recursive: true })
   await writeFile(join(publicDir, 'index.html'), '<p>Help</p>')
   await writeFile(join(publicDir, 'previous.txt'), 'Previous document')
-  await writeFile(join(root, 'Details.vue'), '<template><p>Details</p></template>')
+  await writeFile(
+    join(root, 'Details.vue'),
+    '<template><p>Details</p></template>',
+  )
 
   const config = {
     template: `<script setup>
@@ -31,7 +34,7 @@ import { defineAsyncComponent } from 'vue'
 const Details = defineAsyncComponent(() => import('./Details.vue'))
 </script>
 <template><main><Details /></main></template>`,
-    vite: { publicDir: 'static' },
+    vite: {},
   }
   await buildProject(root, tempDir, config)
   await rm(join(publicDir, 'previous.txt'))
