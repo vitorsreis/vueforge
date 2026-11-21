@@ -158,7 +158,13 @@ export async function createVueforgeRenderer(
       ? {
           render: async (context: Record<string, unknown> = {}) => {
             const result = await directMain(context)
-            const app = 'app' in result ? result.app : result
+            const candidate: unknown = result
+            const app =
+              candidate !== null &&
+              typeof candidate === 'object' &&
+              'app' in candidate
+                ? candidate.app
+                : candidate
             if (
               typeof app !== 'object' ||
               app === null ||

@@ -107,6 +107,18 @@ test('public renderer accepts a direct main factory', async (t) => {
   })
 })
 
+test('public renderer reports invalid direct factory results clearly', async () => {
+  const renderer = await createVueforgeRenderer({
+    mode: 'development',
+    main: () => null,
+  })
+
+  const response = await renderer.render({ context: {}, format: 'json' })
+  assert.equal(response.status, 500)
+  assert.match(String(response.body.error), /main factory/i)
+  await renderer.close()
+})
+
 test('public renderer accepts a custom config path', async (t) => {
   const root = await createProject(t, undefined, {
     'custom/vueforge.server.ts':
