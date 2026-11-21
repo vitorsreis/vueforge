@@ -29,8 +29,7 @@ each render's app and request data isolated.
 The render handler validates `props`, `context`, `format`, and `hydrate`, applies
 limits, and maps failures to status codes. HTTP adapters expose `/render`, `/`,
 and `/healthz`. The stdio adapter reads newline-delimited JSON and writes one
-JSON response per input line. Bun development places a Bun HTTP and WebSocket
-proxy in front of an internal Vite server so HMR uses the public origin.
+JSON response per input line.
 
 Format selection uses explicit request format first, then `Accept` quality,
 then configured format, and finally JSON. JSON returns `head` entries and a

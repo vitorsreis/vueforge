@@ -14,7 +14,7 @@ It provides one small workflow for development and production:
 - Vite SSR and HMR while developing.
 - A production build with reusable browser and server artifacts.
 - HTTP, Unix socket, and JSONL stdio transports.
-- Node.js and Bun adapters.
+- A Node.js adapter with a transport boundary for future runtimes.
 - JSON fragments or complete HTML documents.
 
 ## Install

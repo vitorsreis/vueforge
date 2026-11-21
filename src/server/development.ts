@@ -62,7 +62,6 @@ export async function developmentRenderer(
   const { allowedHosts } = vite.config.server
   return {
     render,
-    allowedHosts,
     hostGuard:
       allowedHosts === true
         ? undefined

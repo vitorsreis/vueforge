@@ -48,11 +48,6 @@ configuration for a Unix socket. Use `--stdio` for newline-delimited JSON on the
 CLI. Stdio cannot be combined with a Unix socket. Configure `ssl: { cert, key,
 ca? }` for TLS on TCP.
 
-When the CLI is started with Bun, production uses `Bun.serve`. Development also
-uses Bun as the public listener and proxies Vite's middleware and HMR WebSocket
-to an internal Vite server. The browser-facing HMR origin remains the VueForge
-listener.
-
 ## Limits
 
 - JSON request body: 64 KiB
