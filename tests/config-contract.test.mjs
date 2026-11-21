@@ -176,3 +176,40 @@ test('passes configured runtime mode to vite.config.ts', async (t) => {
   })
   assert.equal(config.vite?.define?.__VUEFORGE_CONFIG_MODE__, '"development"')
 })
+
+test('loads vite.config.ts from the configured project root', async (t) => {
+  const root = await createRoot(t, {
+    'vueforge.config.ts': "export default { root: 'app' }",
+    'app/vite.config.ts': [
+      "import { defineConfig } from 'vite'",
+      'export default defineConfig({ define: { __VUEFORGE_ROOT_CONFIG__: JSON.stringify(true) } })',
+    ].join('\n'),
+  })
+
+  const config = await loadProjectConfig(root, {
+    command: 'serve',
+    mode: 'production',
+  })
+  assert.equal(config.root, join(root, 'app'))
+  assert.equal(config.vite?.define?.__VUEFORGE_ROOT_CONFIG__, 'true')
+})
+
+test('explicit mode override wins over the project mode for vite.config.ts', async (t) => {
+  const root = await createRoot(t, {
+    'vueforge.config.ts': "export default { mode: 'production' }",
+    'vite.config.ts': [
+      "import { defineConfig } from 'vite'",
+      'export default defineConfig(({ mode }) => ({ define: { __VUEFORGE_CONFIG_MODE__: JSON.stringify(mode) } }))',
+    ].join('\n'),
+  })
+
+  const config = await loadProjectConfig(
+    root,
+    { command: 'serve', mode: 'production' },
+    undefined,
+    undefined,
+    undefined,
+    'development',
+  )
+  assert.equal(config.vite?.define?.__VUEFORGE_CONFIG_MODE__, '"development"')
+})

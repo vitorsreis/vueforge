@@ -53,7 +53,6 @@ export async function serveProject(
   root: string,
   dev: boolean,
   options: ServeProjectOptions,
-  _tempDir: string,
   config: VueforgeConfig = {},
 ) {
   if (

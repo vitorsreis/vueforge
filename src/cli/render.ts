@@ -66,6 +66,9 @@ export async function renderProject(
     root,
     { command: 'serve', mode: 'production' },
     configFile,
+    undefined,
+    undefined,
+    'production',
   )
   const projectRoot = config.root ?? root
   if (limitsOverride !== undefined)

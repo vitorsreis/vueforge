@@ -55,6 +55,15 @@ async function main() {
       mode: requestedDev ? 'development' : 'production',
     },
     args.config,
+    undefined,
+    undefined,
+    args.command === 'build'
+      ? 'production'
+      : args.devSpecified
+        ? requestedDev
+          ? 'development'
+          : 'production'
+        : undefined,
   )
   const dev =
     args.command === 'serve' &&
@@ -79,9 +88,8 @@ async function main() {
       shutdownTimeoutMs: args.shutdownTimeoutMs,
     }
   }
-  const tempDir = resolveTempDir(projectRoot, config.tempDir)
-
   if (args.command === 'build') {
+    const tempDir = resolveTempDir(projectRoot, config.tempDir)
     await buildProject(projectRoot, tempDir, config)
     return
   }
@@ -95,7 +103,6 @@ async function main() {
       ...(args.unix === undefined ? {} : { unix: args.unix }),
       ...(args.stdio ? { stdio: true } : {}),
     },
-    tempDir,
     config,
   )
 }

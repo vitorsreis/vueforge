@@ -106,6 +106,7 @@ export async function loadProjectConfig(
   configFile?: string,
   explicitRoot?: string,
   inlineConfig?: Record<string, unknown>,
+  modeOverride?: VueforgeMode,
 ) {
   const file = await resolveProjectConfigFile(root, configFile)
 
@@ -139,14 +140,21 @@ export async function loadProjectConfig(
     throw new Error('vueforge.config.ts: vite must be an object.')
   }
 
+  const resolvedRoot = resolve(
+    explicitRoot ??
+      (typeof config.root === 'string' && config.root.trim()
+        ? resolve(root, config.root)
+        : root),
+  )
   const viteMode =
-    config.mode === 'development' || config.mode === 'production'
+    modeOverride ??
+    (config.mode === 'development' || config.mode === 'production'
       ? config.mode
-      : env.mode
+      : env.mode)
   const viteConfig = await loadConfigFromFile(
     { ...env, mode: viteMode },
     undefined,
-    root,
+    resolvedRoot,
   )
 
   if (viteConfig) {
@@ -156,12 +164,6 @@ export async function loadProjectConfig(
     )
   }
 
-  const resolvedRoot = resolve(
-    explicitRoot ??
-      (typeof config.root === 'string' && config.root.trim()
-        ? config.root
-        : root),
-  )
   const resolvedConfig = { ...config, root: resolvedRoot } as VueforgeConfig
   if (file) {
     Object.defineProperty(resolvedConfig, '__vueforgeConfigFile', {
