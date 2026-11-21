@@ -95,7 +95,7 @@ function renderHtmlHead(
   { hydrate, props, context }: Omit<RenderRequest, 'format'>,
   includeScripts = hydrate,
 ) {
-  let head = teleportHead ?? ''
+  let head = teleportHead
   for (const asset of assets) {
     if (asset.tag === 'link') head += headEntryHtml(asset)
     if (asset.tag === 'style') {
