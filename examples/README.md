@@ -12,6 +12,9 @@ the request context, and commands that can be copied into a terminal.
 - [`directory`](./directory/) scans every `.vue` file in a directory.
 - [`pattern`](./pattern/) scans files selected by a regular expression.
 - [`catalog`](./catalog/) defines a named catalog of components and inline SFCs.
+- [`errors`](./errors/) demonstrates development render diagnostics.
+- [`teleport`](./teleport/) sends title and metadata to the rendered head.
+- [`scoped`](./scoped/) demonstrates Vue `<style scoped>` output.
 
 Run an example from its directory:
 
