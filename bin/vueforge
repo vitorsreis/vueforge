@@ -6,7 +6,7 @@ import { loadProjectConfig, resolveTempDir } from '../dist/config.js'
 import { listenOptions } from '../dist/server/transports/config.js'
 import { buildProject } from '../dist/build.js'
 import { CliUsageError, parseCliArguments } from '../dist/cli/arguments.js'
-import { cliHelp } from '../dist/cli/help.js'
+import { help } from '../dist/cli/help.js'
 import { renderProject } from '../dist/cli/render.js'
 import { packageVersion } from '../dist/cli/version.js'
 import { serveProject } from '../dist/server/serve.js'
@@ -15,7 +15,7 @@ async function main() {
   const args = parseCliArguments(process.argv.slice(2))
 
   if (args.help) {
-    console.log(cliHelp(args.command))
+    console.log(help(args.command))
     return
   }
 
@@ -25,7 +25,7 @@ async function main() {
   }
 
   if (args.command === undefined) {
-    console.log(cliHelp())
+    console.log(help())
     return
   }
 
@@ -98,7 +98,7 @@ try {
   if (error instanceof CliUsageError) {
     console.error(`Error: ${error.message}`)
     console.error('')
-    console.error(cliHelp())
+    console.error(help())
     process.exitCode = error.exitCode
   } else {
     console.error(error instanceof Error ? error.message : error)

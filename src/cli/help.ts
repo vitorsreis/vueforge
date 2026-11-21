@@ -12,7 +12,7 @@ const commandOptions = `Global options:
   -h, --help           Show help
   -v, --version        Show version`
 
-export function cliHelp(command?: CliCommand): string {
+export function help(command?: CliCommand): string {
   if (command === 'serve') {
     return `Usage: vueforge serve [options]
 
