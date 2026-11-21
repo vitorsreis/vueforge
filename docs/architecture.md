@@ -1,39 +1,52 @@
 # Architecture
 
-VueForge is a process-local Vue SSR renderer. It keeps routing and final-page
-composition in the backend while providing a stable render contract.
+Vueforge keeps one process alive and exposes a narrow rendering contract to an
+external backend.
 
 ```text
-backend route
-    -> HTTP TCP / Unix socket, or CLI stdio
-    -> request validation and format negotiation
-    -> Vue source resolver and Vite module runner
-    -> SSR render
-    -> JSON envelope or configured HTML document
+backend
+  -> HTTP, Unix socket, or stdio transport
+  -> request parser and format negotiation
+  -> configured template catalog or entry factory
+  -> Vite SSR runner in development / built worker pool in production
+  -> JSON fragments or a complete HTML document
 ```
 
-## Source and rendering
+The backend remains responsible for application routes, authentication, data
+loading, and caching decisions.
 
-The project root resolves the Vue source, configuration, Vite modules, and
-artifacts. The source is `src/App.vue` by default. The single configured
-`source` is classified internally as a component, inline SFC, or factory module.
-A factory module creates a fresh Vue app for each render and may provide
-request-scoped router or store state.
+## Source model
 
-Development uses Vite's module runner and HMR. Production loads the server
-artifact produced by `vueforge build` and reuses compiled modules while keeping
-each render's app and request data isolated.
+`template` resolves one component or inline SFC. `entry` resolves a module that
+creates an app for each request. `templates` resolves a finite catalog of named
+components. The request can select only a name from that catalog.
 
-## Adapters and contract
+All application instances are created per render. The renderer does not retain
+request props or context between calls. Entry modules must also create routers,
+stores, and other mutable services per request.
 
-The render handler validates `props`, `context`, `format`, and `hydrate`, applies
-limits, and maps failures to status codes. HTTP adapters expose `/render`, `/`,
-and `/healthz`. The stdio adapter reads newline-delimited JSON and writes one
-JSON response per input line.
+## Runtime modes
 
-Format selection uses explicit request format first, then `Accept` quality,
-then configured format, and finally JSON. JSON returns `head` entries and a
-content fragment. HTML uses `document` options to return a complete document.
+Development creates a Vite environment in middleware mode. The SSR module
+runner reloads changed modules and the client assets include the Vite and
+Vueforge HMR clients.
 
-Hydration serializes request values and browser assets into head entries. Values
-included in a hydrated request are public to the browser.
+Production loads the built SSR entry and serves the built client inventory. SSR
+workers enforce concurrency, timeout, memory, request, and output limits. A
+worker that exceeds its deadline is terminated and replaced.
+
+## Response model
+
+The renderer first collects Vue Teleport output for `head`, then asset tags, and
+finally the SSR content. `parse5` converts top-level Teleport elements into
+structured tags. Vue marker comments are removed from non-hydrated responses so
+backends do not need to understand Vue's internal SSR markers.
+
+`format: 'json'` returns `{ head, content }`. `format: 'html'` wraps the same
+fragments with the configured document options.
+
+## Public package boundary
+
+The package root exports `defineConfig` and `createVueforgeApp`. Server adapters,
+Vite plugins, workers, and transport internals remain private implementation
+modules. The CLI is published as the `vueforge` executable.

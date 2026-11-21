@@ -12,7 +12,7 @@ Do not open a public issue for an unpatched vulnerability. The maintainer will a
 
 ## Trust model
 
-VueForge runs the project's Vue components, `vueforge.config.ts`, and Vite plugins with the permissions of the Node.js process. Run only trusted projects in the renderer process.
+Vueforge runs the project's Vue components, `vueforge.config.ts`, and Vite plugins with the permissions of the Node.js process. Run only trusted projects in the renderer process.
 
 The HTTP server has no authentication. Bind it to `127.0.0.1` by default and place an authenticated backend or reverse proxy in front of it before exposing it to a network. Development mode also exposes Vite's development middleware and HMR endpoints.
 

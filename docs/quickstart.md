@@ -1,32 +1,31 @@
 # Quickstart
 
-This guide creates a VueForge renderer beside an existing backend.
+This guide adds Vue SSR beside an existing backend.
 
-## 1. Create the Vue source
+## 1. Create a component
 
 Create `src/App.vue`:
 
 ```vue
-<script setup>
-defineProps({
-  title: { type: String, default: 'VueForge' },
-})
+<script setup lang="ts">
+defineProps<{ title?: string }>()
 </script>
 
 <template>
   <main>
-    <h1>{{ title }}</h1>
+    <h1>{{ title ?? 'Hello from Vueforge' }}</h1>
   </main>
 </template>
 ```
 
-## 2. Develop with HMR
+## 2. Start development SSR
 
 ```sh
 npx vueforge serve --dev
 ```
 
-The default listener is `http://127.0.0.1:9901`.
+The default listener is `http://127.0.0.1:9901`. Vite serves the development
+modules and Vueforge adds the HMR client to hydrated responses.
 
 ## 3. Render from the backend
 
@@ -37,44 +36,40 @@ curl --request POST \
   http://127.0.0.1:9901/render
 ```
 
-The JSON response contains ordered `head` entries and the rendered `content`.
-The backend can place them into its own HTML document.
+The JSON response contains `head` entries and the `content` fragment. Insert
+`head` into the document head and `content` into the Vue root element.
 
-## 4. Build production artifacts
+## 4. Request a complete document
+
+```sh
+curl --request POST \
+  --header 'Accept: text/html' \
+  --header 'Content-Type: application/json' \
+  --data '{"props":{"title":"Orders"}}' \
+  http://127.0.0.1:9901/render
+```
+
+Configure the document wrapper when the returned HTML needs language or body
+attributes.
+
+## 5. Build production artifacts
 
 ```sh
 npx vueforge build
 npx vueforge serve
 ```
 
-The default final output is `dist/client` and `dist/server`. The temporary
-staging directory is `.vueforge`.
+The production server reads `build.outDir`, which defaults to `dist`.
 
-## 5. Render once through stdio
+## 6. Choose an entry or catalog
 
-```sh
-printf '%s\n' '{"props":{"title":"Orders"}}' | npx vueforge render
+Use `entry: 'src/entry.ts'` when the app needs a request-scoped router, store,
+or plugin setup. Use `templates: 'src/templates'` when the backend chooses a
+named `.vue` view per request.
+
+```json
+{ "template": "invoice", "props": { "number": "A-42" } }
 ```
 
-Use `--format html` when VueForge should return a complete document:
-
-```sh
-printf '%s\n' '{}' | npx vueforge render --format html
-```
-
-## 6. Add a source configuration
-
-Create `vueforge.config.ts` when the project needs a different source or
-runtime setting:
-
-```ts
-import { defineConfig } from '@vitorsreis/vueforge'
-
-export default defineConfig({
-  source: 'src/App.vue',
-  port: 9901,
-  build: { outDir: 'dist' },
-})
-```
-
-Continue with [configuration](configuration.md) and [backend integration](integration.md).
+See [configuration](configuration.md) for inline SFCs, imported components,
+transport options, limits, TLS, CORS, and Vite integration.

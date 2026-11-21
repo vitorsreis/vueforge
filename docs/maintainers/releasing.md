@@ -1,6 +1,6 @@
 # Release process
 
-VueForge publishes `@vitorsreis/vueforge` and creates a matching GitHub Release from a signed stable SemVer tag.
+Vueforge publishes `@vitorsreis/vueforge` and creates a matching GitHub Release from a signed stable SemVer tag.
 
 ## Repository setup
 

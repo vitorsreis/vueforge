@@ -10,7 +10,7 @@ npx vueforge serve --dev
 
 Vite stays alive for the process lifetime. Component edits are picked up by later SSR requests. Hydrated pages use Vite HMR. Keep development mode private because it serves Vite middleware and has no authentication.
 
-When a module fails during HMR, VueForge displays its own error overlay with the Vite message, file location, source frame, and stack trace. A failed `POST /render` can return the same diagnostic information as an HTML page or JSON by using the options described in [HTTP API](http-api.md#development-diagnostics).
+When a module fails during HMR, Vueforge displays its own error overlay with the Vite message, file location, source frame, and stack trace. A failed `POST /render` can return the same diagnostic information as an HTML page or JSON by using the options described in [HTTP API](http-api.md#development-diagnostics).
 
 ## Production lifecycle
 
@@ -33,20 +33,20 @@ printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render
 
 Use `GET /healthz` for a liveness probe. It returns `{"status":"ok"}` with `Cache-Control: no-store` after the HTTP server has initialized.
 
-Use `POST /render` for an application-level check. A successful health check does not prove that the build artifacts or Vue source render successfully.
+Use `POST /render` for an application-level check. A successful health check does not prove that the build artifacts or Vue template or entry render successfully.
 
 ## Request isolation and caching
 
 Each render creates a new Vue app. Vite modules and compiled production code are reused, so request-specific state must stay inside the app or its factory. Do not keep request data in module-level mutable values.
 
-VueForge does not cache rendered HTML. Add caching in the backend only when the document is safe to reuse. Include every render input in the cache key.
+Vueforge does not cache rendered HTML. Add caching in the backend only when the document is safe to reuse. Include every render input in the cache key.
 
 ## Transports
 
-TCP is the default persistent transport. Use `--unix <path>` or `unix` in the
-configuration for a Unix socket. Use `--stdio` for newline-delimited JSON on the
-CLI. Stdio cannot be combined with a Unix socket. Configure `ssl: { cert, key,
-ca? }` for TLS on TCP.
+TCP is the default persistent transport. Use `--unix <path>` or `server.unix` in
+the configuration for a Unix socket. Use `--stdio` for newline-delimited JSON on
+the CLI. Stdio cannot be combined with a Unix socket. Configure
+`server.ssl: { cert, key, ca? }` for TLS on TCP.
 
 ## Limits
 

@@ -2,7 +2,7 @@
 
 ## Development environment
 
-VueForge requires Node.js 26 and npm.
+Vueforge requires Node.js 26 and npm.
 
 ```sh
 npm ci
