@@ -1,7 +1,6 @@
 import { Buffer } from 'node:buffer'
 import { parentPort, workerData } from 'node:worker_threads'
 
-import { MAX_RENDER_BYTES } from './render-capacity.js'
 import { renderFrom, type AppRender } from './renderer.js'
 
 export type WorkerRequest = Parameters<AppRender> | undefined
@@ -10,12 +9,29 @@ export type WorkerReply =
   | { type: 'rendered'; result: Awaited<ReturnType<AppRender>> }
   | { type: 'error'; detail: string }
 
-if (!parentPort || typeof workerData !== 'string') {
+interface WorkerOptions {
+  entry?: unknown
+  maxOutputBytes?: unknown
+}
+
+const options =
+  typeof workerData === 'object' && workerData !== null
+    ? (workerData as WorkerOptions)
+    : {}
+const maxOutputBytes = Number(options.maxOutputBytes)
+
+if (
+  !parentPort ||
+  typeof options.entry !== 'string' ||
+  !Number.isSafeInteger(maxOutputBytes) ||
+  maxOutputBytes < 1
+) {
   throw new Error('VueForge could not initialize its SSR worker.')
 }
 
 const port = parentPort
-const render = renderFrom(await import(workerData))
+const entry = options.entry
+const render = renderFrom(await import(entry))
 
 port.on('message', (request: WorkerRequest) => {
   void renderAndReply(request)
@@ -30,9 +46,11 @@ async function renderAndReply(request: WorkerRequest) {
       const { content, teleportHead } = await render(...request)
       if (
         Buffer.byteLength(content) + Buffer.byteLength(teleportHead) >
-        MAX_RENDER_BYTES
+        maxOutputBytes
       ) {
-        throw new Error('Vue SSR exceeds the 4 MiB output limit.')
+        throw new Error(
+          `Vue SSR exceeds the ${String(maxOutputBytes)} byte output limit.`,
+        )
       }
       reply = { type: 'rendered', result: { content, teleportHead } }
     }

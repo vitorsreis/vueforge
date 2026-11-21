@@ -50,7 +50,7 @@ if (title === 'Throw') throw new Error('component failure')
   await writeFile(
     join(cwd, 'vueforge.config.ts'),
     `console.log('config diagnostic')
-export default { tempDir: 'cache/render output', port: 0 }`,
+export default { tempDir: 'cache/temp', build: { outDir: 'cache/render output' }, port: 0 }`,
   )
   const build = run(cwd, 'build')
   assert.equal(build.status, 0, build.stderr)
@@ -61,7 +61,7 @@ export default { tempDir: 'cache/render output', port: 0 }`,
   const result = run(cwd, 'render', atLimit)
   assert.equal(result.status, 0, result.stderr)
   assert.deepEqual(JSON.parse(result.stdout), {
-    head: '',
+    head: [],
     content: '<h1>Ol\u00e1 &amp; &lt;Vue&gt;</h1>',
   })
   assert.match(result.stderr, /config diagnostic/)

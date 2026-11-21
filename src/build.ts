@@ -12,7 +12,7 @@ import { join } from 'node:path'
 import { build } from 'vite'
 
 import { clientAssetsFile, isClientAsset } from './client-assets.js'
-import { resolveAppSource } from './config.js'
+import { resolveAppSource, resolveBuildOutputDir } from './config.js'
 import type { VueForgeConfig } from './index.js'
 import { clientEntry, serverEntry, vueViteConfig } from './vite/vue-app.js'
 
@@ -51,6 +51,17 @@ export async function buildProject(
 ) {
   const source = await resolveAppSource(root, project)
   const config = project.vite ?? {}
+  const outputDir = resolveBuildOutputDir(root, project.build?.outDir)
+  const buildOverrides: {
+    sourcemap?: NonNullable<NonNullable<typeof config.build>['sourcemap']>
+    minify?: NonNullable<NonNullable<typeof config.build>['minify']>
+  } = {}
+  if (project.build?.sourcemap !== undefined) {
+    buildOverrides.sourcemap = project.build.sourcemap
+  }
+  if (project.build?.minify !== undefined) {
+    buildOverrides.minify = project.build.minify
+  }
 
   await mkdir(tempDir, { recursive: true })
   const lockFile = join(tempDir, '.build.lock')
@@ -67,6 +78,7 @@ export async function buildProject(
         ...vueViteConfig(root, config, source),
         build: {
           ...config.build,
+          ...buildOverrides,
           write: true,
           watch: null,
           emptyOutDir: false,
@@ -87,6 +99,7 @@ export async function buildProject(
         ssr: { ...config.ssr, noExternal: true },
         build: {
           ...config.build,
+          ...buildOverrides,
           write: true,
           watch: null,
           emptyOutDir: false,
@@ -101,8 +114,8 @@ export async function buildProject(
         },
       })
 
-      const clientDir = join(tempDir, 'client')
-      const serverDir = join(tempDir, 'server')
+      const clientDir = join(outputDir, 'client')
+      const serverDir = join(outputDir, 'server')
       const clientFiles = await prepareOutput(clientOut, clientDir)
       const serverFiles = await prepareOutput(serverOut, serverDir)
       const inventory = JSON.stringify(clientFiles.filter(isClientAsset).sort())

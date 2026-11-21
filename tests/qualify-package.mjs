@@ -120,7 +120,7 @@ try {
   )
   await writeFile(
     join(cwd, 'vueforge.config.ts'),
-    "import { defineConfig } from '@vitorsreis/vueforge'\nexport default defineConfig({ tempDir: 'build' })\n",
+    "import { defineConfig } from '@vitorsreis/vueforge'\nexport default defineConfig({ tempDir: '.vueforge', build: { outDir: 'build' } })\n",
   )
 
   run(cli, ['build'], cwd)
@@ -128,7 +128,7 @@ try {
   await access(join(cwd, 'build/server/entry.mjs'))
   await rm(join(cwd, 'src/App.vue'))
   const body = JSON.stringify({ props: { title: 'Packed <Vue>' } })
-  const expected = { head: '', content: '<h1>Packed &lt;Vue&gt;</h1>' }
+  const expected = { head: [], content: '<h1>Packed &lt;Vue&gt;</h1>' }
   assert.deepEqual(JSON.parse(run(cli, ['render'], cwd, body)), expected)
   await verifyServer(cli, cwd, body, expected)
   console.log('Package qualification passed on Node.js ' + versions.node)

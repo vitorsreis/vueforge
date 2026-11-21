@@ -19,6 +19,9 @@ export const RENDER_TIMEOUT_MS = 5000
 export const MAX_RENDER_BYTES = 4 * 1024 * 1024
 
 export interface RenderLimits {
+  maxConcurrentRenders?: number
+  renderTimeoutMs?: number
+  maxOutputBytes?: number
   maxConcurrent?: number
   timeoutMs?: number
 }

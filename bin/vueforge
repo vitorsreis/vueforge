@@ -32,9 +32,9 @@ async function main() {
     return
   }
 
-  const root = process.cwd()
+  const root = args.root === undefined ? process.cwd() : args.root
   if (args.command === 'render') {
-    await renderProject(root, args.format, args.config)
+    await renderProject(root, args.format, args.config, args.limits)
     return
   }
 
@@ -47,6 +47,18 @@ async function main() {
     },
     args.config,
   )
+  if (args.limits !== undefined) {
+    config.limits = { ...config.limits, ...args.limits }
+  }
+  if (args.ssl !== undefined) {
+    if (args.ssl.key === undefined || args.ssl.cert === undefined) {
+      throw new CliUsageError('--ssl-key and --ssl-cert are required together.')
+    }
+    config.ssl = { ...args.ssl, key: args.ssl.key, cert: args.ssl.cert }
+  }
+  if (args.shutdownTimeoutMs !== undefined) {
+    config.shutdownTimeoutMs = args.shutdownTimeoutMs
+  }
   const tempDir = resolveTempDir(root, config.tempDir)
 
   if (args.command === 'build') {
@@ -55,7 +67,17 @@ async function main() {
   }
 
   const listener = listenOptions(config, args.host, args.port)
-  await serveProject(root, dev, listener, tempDir, config)
+  await serveProject(
+    root,
+    dev,
+    {
+      ...listener,
+      ...(args.unix === undefined ? {} : { unix: args.unix }),
+      ...(args.stdio ? { stdio: true } : {}),
+    },
+    tempDir,
+    config,
+  )
 }
 
 try {

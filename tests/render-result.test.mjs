@@ -2,10 +2,10 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { RenderInputError, parseRenderRequest } from '../dist/render/request.js'
-import { renderResponse } from '../dist/render/result.js'
+import { formatRenderResponse, renderResponse } from '../dist/render/result.js'
 
 test('validates and defaults the shared render request fields', () => {
-  assert.deepEqual(parseRenderRequest({}), { format: 'html', hydrate: false })
+  assert.deepEqual(parseRenderRequest({}), { format: 'json', hydrate: false })
   assert.deepEqual(
     parseRenderRequest({
       format: 'json',
@@ -45,9 +45,111 @@ test('returns teleported HTML and CSS in both formats without hydration', () => 
     content: '<h1>Hi</h1>',
   })
   assert.deepEqual(renderResponse(result, { ...request, format: 'json' }), {
-    head: [{ html: teleportHead }, css],
+    head: [
+      {
+        tag: 'meta',
+        attrs: { name: 'description', content: 'Teleported' },
+      },
+      css,
+    ],
     content: '<h1>Hi</h1>',
   })
+})
+
+test('parses Teleport head tags without losing nested content', () => {
+  const result = renderResponse(
+    {
+      teleportHead:
+        '<!--teleport start anchor-->' +
+        '<title>Orders</title>' +
+        '<script type="application/ld+json">{"@type":"WebPage"}</script>' +
+        '<!--teleport anchor-->',
+      assets: [],
+      content: '<main>Orders</main>',
+    },
+    { format: 'json', hydrate: false },
+  )
+
+  assert.deepEqual(result.head, [
+    { html: '<!--teleport start anchor-->' },
+    { tag: 'title', attrs: {}, content: 'Orders' },
+    {
+      tag: 'script',
+      attrs: { type: 'application/ld+json' },
+      content: '{"@type":"WebPage"}',
+    },
+    { html: '<!--teleport anchor-->' },
+  ])
+})
+
+test('formats JSON and HTML using the same structured head entries', () => {
+  const result = {
+    teleportHead: '<title>Orders</title>',
+    assets: [
+      { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+      { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
+    ],
+    content: '<main>Orders</main>',
+  }
+
+  const json = formatRenderResponse(result, {
+    format: 'json',
+    hydrate: false,
+  })
+  assert.equal(json.format, 'json')
+  assert.deepEqual(json.body.head, [
+    { tag: 'title', attrs: {}, content: 'Orders' },
+  ])
+
+  const html = formatRenderResponse(
+    result,
+    { format: 'html', hydrate: false },
+    {
+      development: true,
+      document: {
+        htmlAttrs: { lang: 'pt-BR' },
+        rootId: 'app-root',
+      },
+    },
+  )
+  assert.equal(html.format, 'html')
+  assert.match(html.body, /^<!doctype html>/)
+  assert.match(html.body, /<html lang="pt-BR">/)
+  assert.match(html.body, /<title>Orders<\/title>/)
+  assert.match(
+    html.body,
+    /<script type="module" src="\/@vite\/client"><\/script>/,
+  )
+  assert.match(html.body, /<div id="app-root"><main>Orders<\/main><\/div>/)
+})
+
+test('renders a configured document around the response fragments', async () => {
+  const { renderDocument } = await import('../dist/render/document.js')
+
+  assert.equal(
+    renderDocument(
+      [{ tag: 'title', attrs: {}, content: 'Orders' }],
+      '<main>Orders</main>',
+      {
+        htmlAttrs: { lang: 'pt-BR' },
+        bodyAttrs: { class: 'app' },
+        rootId: 'vue',
+        head: [
+          {
+            tag: 'meta',
+            attrs: { charset: 'utf-8' },
+          },
+        ],
+      },
+    ),
+    '<!doctype html>\n' +
+      '<html lang="pt-BR">\n' +
+      '  <head><meta charset="utf-8"><title>Orders</title></head>\n' +
+      '  <body class="app">\n' +
+      '    <div id="vue"><main>Orders</main></div>\n' +
+      '  </body>\n' +
+      '</html>\n',
+  )
 })
 
 test('encodes raw text safely and places hydration data before the module', () => {

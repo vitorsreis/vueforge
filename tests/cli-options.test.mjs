@@ -7,6 +7,8 @@ import { execPath } from 'node:process'
 import test from 'node:test'
 import { fileURLToPath, URL } from 'node:url'
 
+import { parseCliArguments } from '../dist/cli/arguments.js'
+
 const cli = fileURLToPath(new URL('../bin/vueforge', import.meta.url))
 const projectRoot = fileURLToPath(new URL('../', import.meta.url))
 const scratch = join(projectRoot, '.vueforge')
@@ -60,10 +62,82 @@ test('rejects options used with the wrong command', () => {
     ['build', '--dev'],
     ['serve', '--format', 'json'],
     ['render', '--port', '9901'],
+    ['render', '--max-concurrent-renders', '2'],
+    ['build', '--max-request-bytes', '64'],
   ]) {
     const result = run(projectRoot, args)
     assert.equal(result.status, 2)
     assert.match(result.stderr, /^Error:/)
+  }
+})
+
+test('parses transport and render overrides', () => {
+  const serve = parseCliArguments([
+    '-r',
+    'project',
+    'serve',
+    '-c',
+    'project.ts',
+    '--unix',
+    'server.sock',
+    '--ssl-cert',
+    'cert.pem',
+    '--ssl-key',
+    'key.pem',
+    '--ssl-ca',
+    'ca.pem',
+    '--shutdown-timeout-ms',
+    '3000',
+    '--max-request-bytes',
+    '128',
+    '--max-output-bytes',
+    '256',
+    '--render-timeout-ms',
+    '500',
+    '--max-concurrent-renders',
+    '2',
+  ])
+  assert.equal(serve.root, 'project')
+  assert.equal(serve.config, 'project.ts')
+  assert.equal(serve.unix, 'server.sock')
+  assert.equal(serve.shutdownTimeoutMs, 3000)
+  assert.deepEqual(serve.ssl, {
+    cert: 'cert.pem',
+    key: 'key.pem',
+    ca: 'ca.pem',
+  })
+  assert.deepEqual(serve.limits, {
+    maxRequestBytes: 128,
+    maxOutputBytes: 256,
+    renderTimeoutMs: 500,
+    maxConcurrentRenders: 2,
+  })
+  assert.equal(parseCliArguments(['serve', '--stdio']).stdio, true)
+
+  const render = parseCliArguments([
+    'render',
+    '-f',
+    'html',
+    '--max-request-bytes',
+    '128',
+  ])
+  assert.equal(render.format, 'html')
+  assert.deepEqual(render.limits, { maxRequestBytes: 128 })
+})
+
+test('rejects conflicting transport flags and invalid limits', () => {
+  for (const [args, expected] of [
+    [['--stdio', '--dev'], /--stdio.*--dev/],
+    [['--stdio', '--unix', 'server.sock'], /--stdio.*--unix/],
+    [['--stdio', '--host', 'localhost'], /--stdio.*--host/],
+    [['--unix', 'server.sock', '--port', '9901'], /--unix.*--port/],
+    [['--stdio', '--ssl-cert', 'cert.pem'], /--stdio.*TLS/],
+    [['--shutdown-timeout-ms', '0'], /positive integer/],
+    [['--max-output-bytes', '1.5'], /positive integer/],
+    [['--max-concurrent-renders', '9007199254740992'], /positive integer/],
+    [['-p', '9901'], /Unknown option/],
+  ]) {
+    assert.throws(() => parseCliArguments(['serve', ...args]), expected)
   }
 })
 
@@ -77,16 +151,17 @@ test('loads a custom configuration file and supports explicit render formats', a
   )
   await writeFile(
     join(cwd, 'config/vueforge.local.ts'),
-    "export default { tempDir: 'cache/vueforge' }",
+    "export default { tempDir: 'cache/tmp', build: { outDir: 'cache/vueforge' } }",
   )
 
   const build = run(cwd, ['build', '--config', 'config/vueforge.local.ts'])
   assert.equal(build.status, 0, build.stderr)
+  await access(join(cwd, 'cache/vueforge/client/.vite/manifest.json'))
   await access(join(cwd, 'cache/vueforge/server/entry.mjs'))
 
   const html = run(
     cwd,
-    ['render', '--config', 'config/vueforge.local.ts', '--format', 'html'],
+    ['render', '--config', 'config/vueforge.local.ts', '-f', 'html'],
     '{"props":{"title":"Hello"}}',
   )
   assert.equal(html.status, 0, html.stderr)

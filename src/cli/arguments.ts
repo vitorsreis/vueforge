@@ -10,7 +10,18 @@ export interface CliArguments {
   format?: RenderOutputFormat
   help: boolean
   host?: string
+  root?: string
   port?: string
+  unix?: string
+  stdio: boolean
+  shutdownTimeoutMs?: number
+  ssl?: { cert?: string; key?: string; ca?: string }
+  limits?: {
+    maxRequestBytes?: number
+    maxOutputBytes?: number
+    renderTimeoutMs?: number
+    maxConcurrentRenders?: number
+  }
   version: boolean
 }
 
@@ -35,6 +46,36 @@ function outputFormat(
   throw new CliUsageError('--format must be "html" or "json".')
 }
 
+function positiveInteger(name: string, value: string): number {
+  const number = Number(value)
+  if (!/^\d+$/.test(value) || number < 1 || !Number.isSafeInteger(number)) {
+    throw new CliUsageError(`--${name} must be a positive integer.`)
+  }
+  return number
+}
+
+const serveOptions = [
+  'dev',
+  'host',
+  'port',
+  'unix',
+  'stdio',
+  'ssl-cert',
+  'ssl-key',
+  'ssl-ca',
+  'shutdown-timeout-ms',
+  'max-output-bytes',
+  'render-timeout-ms',
+  'max-concurrent-renders',
+] as const
+
+const limitOptions = {
+  'max-request-bytes': 'maxRequestBytes',
+  'max-output-bytes': 'maxOutputBytes',
+  'render-timeout-ms': 'renderTimeoutMs',
+  'max-concurrent-renders': 'maxConcurrentRenders',
+} as const
+
 export function parseCliArguments(args: string[]): CliArguments {
   let parsed
   try {
@@ -43,10 +84,21 @@ export function parseCliArguments(args: string[]): CliArguments {
       options: {
         config: { type: 'string', short: 'c' },
         dev: { type: 'boolean' },
-        format: { type: 'string' },
+        format: { type: 'string', short: 'f' },
         help: { type: 'boolean', short: 'h' },
         host: { type: 'string' },
+        root: { type: 'string', short: 'r' },
         port: { type: 'string' },
+        unix: { type: 'string' },
+        stdio: { type: 'boolean' },
+        'ssl-cert': { type: 'string' },
+        'ssl-key': { type: 'string' },
+        'ssl-ca': { type: 'string' },
+        'shutdown-timeout-ms': { type: 'string' },
+        'max-request-bytes': { type: 'string' },
+        'max-output-bytes': { type: 'string' },
+        'render-timeout-ms': { type: 'string' },
+        'max-concurrent-renders': { type: 'string' },
         version: { type: 'boolean', short: 'v' },
       },
       allowPositionals: true,
@@ -64,14 +116,12 @@ export function parseCliArguments(args: string[]): CliArguments {
   }
 
   const selectedCommand = command(parsed.positionals[0])
-  const usesServeOption =
-    parsed.values.dev !== undefined ||
-    parsed.values.host !== undefined ||
-    parsed.values.port !== undefined
-
-  if (usesServeOption && selectedCommand !== 'serve') {
+  const serveOption = serveOptions.find(
+    (option) => parsed.values[option] !== undefined,
+  )
+  if (serveOption !== undefined && selectedCommand !== 'serve') {
     throw new CliUsageError(
-      'The --dev, --host and --port options belong to the "serve" command.',
+      `The --${serveOption} option belongs to the "serve" command.`,
     )
   }
 
@@ -81,20 +131,81 @@ export function parseCliArguments(args: string[]): CliArguments {
     )
   }
 
+  if (
+    parsed.values['max-request-bytes'] !== undefined &&
+    selectedCommand !== 'serve' &&
+    selectedCommand !== 'render'
+  ) {
+    throw new CliUsageError(
+      'The --max-request-bytes option belongs to the "serve" or "render" command.',
+    )
+  }
+  if (parsed.values.stdio && parsed.values.dev) {
+    throw new CliUsageError('The --stdio option cannot be used with --dev.')
+  }
+  if (parsed.values.stdio && parsed.values.unix !== undefined) {
+    throw new CliUsageError(
+      'The --stdio and --unix options cannot be used together.',
+    )
+  }
+  if (
+    (parsed.values.stdio || parsed.values.unix !== undefined) &&
+    (parsed.values.host !== undefined || parsed.values.port !== undefined)
+  ) {
+    throw new CliUsageError(
+      'The --unix and --stdio options cannot be used with --host or --port.',
+    )
+  }
+
   const result: CliArguments = {
     dev: parsed.values.dev ?? false,
     help: parsed.values.help ?? false,
+    stdio: parsed.values.stdio ?? false,
     version: parsed.values.version ?? false,
   }
 
   if (selectedCommand !== undefined) result.command = selectedCommand
   if (parsed.values.config !== undefined) result.config = parsed.values.config
+  if (parsed.values.root !== undefined) result.root = parsed.values.root
   if (parsed.values.format !== undefined) {
     const format = outputFormat(parsed.values.format)
     if (format !== undefined) result.format = format
   }
   if (parsed.values.host !== undefined) result.host = parsed.values.host
   if (parsed.values.port !== undefined) result.port = parsed.values.port
+  if (parsed.values.unix !== undefined) result.unix = parsed.values.unix
+  const {
+    'shutdown-timeout-ms': shutdownTimeout,
+    'ssl-cert': cert,
+    'ssl-key': key,
+    'ssl-ca': ca,
+  } = parsed.values
+  if (shutdownTimeout !== undefined) {
+    result.shutdownTimeoutMs = positiveInteger(
+      'shutdown-timeout-ms',
+      shutdownTimeout,
+    )
+  }
+  if (cert !== undefined || key !== undefined || ca !== undefined) {
+    if (parsed.values.stdio) {
+      throw new CliUsageError(
+        'The --stdio option cannot be used with TLS options.',
+      )
+    }
+    result.ssl = {
+      ...(cert === undefined ? {} : { cert }),
+      ...(key === undefined ? {} : { key }),
+      ...(ca === undefined ? {} : { ca }),
+    }
+  }
+  for (const name of Object.keys(
+    limitOptions,
+  ) as (keyof typeof limitOptions)[]) {
+    const value = parsed.values[name]
+    if (value === undefined) continue
+    result.limits ??= {}
+    result.limits[limitOptions[name]] = positiveInteger(name, value)
+  }
 
   return result
 }

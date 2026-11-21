@@ -2,20 +2,30 @@ import { Buffer } from 'node:buffer'
 import process from 'node:process'
 import { TextDecoder } from 'node:util'
 
-import { loadProjectConfig, resolveTempDir } from '../config.js'
-import { MAX_REQUEST_BYTES, parseRenderRequest } from '../render/request.js'
-import { renderResponse } from '../render/result.js'
+import {
+  loadProjectConfig,
+  resolveBuildOutputDir,
+  resolveRenderLimits,
+} from '../config.js'
+import { parseRenderRequest } from '../render/request.js'
+import { formatRenderResponse } from '../render/result.js'
 import { productionRenderer } from '../server/production.js'
 
-async function readRequest(): Promise<unknown> {
+async function readRequest(maxRequestBytes: number): Promise<unknown> {
   if (process.stdin.isTTY) return {}
 
   const chunks: Buffer[] = []
   let size = 0
   for await (const chunk of process.stdin as AsyncIterable<Buffer>) {
     size += chunk.length
-    if (size > MAX_REQUEST_BYTES) {
-      throw new Error('Request body exceeds 64 KiB. Reduce the JSON payload.')
+    if (size > maxRequestBytes) {
+      const limit =
+        maxRequestBytes === 64 * 1024
+          ? '64 KiB'
+          : `${String(maxRequestBytes)} bytes`
+      throw new Error(
+        `Request body exceeds ${limit}. Reduce the JSON payload.`,
+      )
     }
     chunks.push(chunk)
   }
@@ -36,46 +46,41 @@ async function readRequest(): Promise<unknown> {
   }
 }
 
-function htmlDocument(head: string, content: string) {
-  return `<!doctype html>
-<html>
-  <head>${head}</head>
-  <body>
-    <div id="app">${content}</div>
-  </body>
-</html>
-`
-}
-
 export async function renderProject(
   root: string,
   outputFormat?: 'html' | 'json',
   configFile?: string,
+  limitsOverride?: { maxRequestBytes?: number },
 ) {
   // Keep stdout for the response even if project code logs after rendering.
   const writeResponse = process.stdout.write.bind(process.stdout)
   process.stdout.write = process.stderr.write.bind(process.stderr)
 
-  const request = parseRenderRequest(await readRequest())
   const config = await loadProjectConfig(
     root,
     { command: 'serve', mode: 'production' },
     configFile,
   )
+  if (limitsOverride !== undefined)
+    config.limits = { ...config.limits, ...limitsOverride }
+  const limits = resolveRenderLimits(config)
+  const request = parseRenderRequest(
+    await readRequest(limits.maxRequestBytes),
+    config.format ?? 'json',
+  )
   const { render } = await productionRenderer(
-    resolveTempDir(root, config.tempDir),
+    resolveBuildOutputDir(root, config.build?.outDir),
   )
 
   const rendered = await render(request.props, request.context)
-  if (outputFormat === 'html') {
-    const response = renderResponse(rendered, { ...request, format: 'html' })
-    writeResponse(htmlDocument(response.head, response.content))
-    return
-  }
-
-  const response = renderResponse(
+  const response = formatRenderResponse(
     rendered,
-    outputFormat === 'json' ? { ...request, format: 'json' } : request,
+    outputFormat === undefined ? request : { ...request, format: outputFormat },
+    config.document === undefined ? {} : { document: config.document },
   )
-  writeResponse(JSON.stringify(response) + '\n')
+  writeResponse(
+    response.format === 'html'
+      ? response.body
+      : JSON.stringify(response.body) + '\n',
+  )
 }

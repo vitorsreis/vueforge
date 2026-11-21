@@ -101,7 +101,7 @@ async function checkRenderResponses(url) {
       const response = await post(url, JSON.stringify({ props: { title } }))
       assert.equal(response.status, 200)
       assert.deepEqual(await response.json(), {
-        head: '',
+        head: [],
         content: '<h1>' + title + '</h1>',
       })
     }),
@@ -146,7 +146,8 @@ for (const mode of [
           }
         : { host: '127.0.0.1', port }
       if (mode === 'production with custom tempDir') {
-        config.tempDir = 'cache/render output'
+        config.tempDir = 'cache/temp'
+        config.build = { outDir: 'cache/render output' }
       }
       await writeFile(
         join(cwd, 'vueforge.config.ts'),
@@ -162,7 +163,7 @@ for (const mode of [
           },
         )
         await run(execPath, [cli, 'build'], { cwd, timeout: 30000 })
-        const output = join(cwd, config.tempDir ?? '.vueforge')
+        const output = join(cwd, config.build?.outDir ?? 'dist')
         await access(join(output, 'client/.vite/manifest.json'))
         await access(join(output, 'server/entry.mjs'))
         await rm(join(cwd, 'src/App.vue'))

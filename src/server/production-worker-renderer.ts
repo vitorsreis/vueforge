@@ -3,6 +3,7 @@ import { Worker } from 'node:worker_threads'
 import type { WorkerReply, WorkerRequest } from './production-worker.js'
 import {
   MAX_CONCURRENT_RENDERS,
+  MAX_RENDER_BYTES,
   RENDER_TIMEOUT_MS,
   RenderBusyError,
   RenderTimeoutError,
@@ -24,10 +25,16 @@ function stop(slot: Slot) {
 export async function productionWorkerRenderer(
   entry: URL,
   {
-    maxConcurrent = MAX_CONCURRENT_RENDERS,
-    timeoutMs = RENDER_TIMEOUT_MS,
+    maxConcurrentRenders,
+    renderTimeoutMs,
+    maxOutputBytes = MAX_RENDER_BYTES,
+    maxConcurrent,
+    timeoutMs,
   }: RenderLimits = {},
 ) {
+  const concurrentLimit =
+    maxConcurrentRenders ?? maxConcurrent ?? MAX_CONCURRENT_RENDERS
+  const timeoutLimit = renderTimeoutMs ?? timeoutMs ?? RENDER_TIMEOUT_MS
   const slots = new Set<Slot>()
   let closed = false
 
@@ -35,7 +42,7 @@ export async function productionWorkerRenderer(
     const worker = new Worker(
       new URL('./production-worker.js', import.meta.url),
       {
-        workerData: entry.href,
+        workerData: { entry: entry.href, maxOutputBytes },
         resourceLimits: {
           maxOldGenerationSizeMb: 128,
           maxYoungGenerationSizeMb: 16,
@@ -57,7 +64,7 @@ export async function productionWorkerRenderer(
     worker.ref()
 
     const { promise, resolve, reject } = Promise.withResolvers<WorkerReply>()
-    const deadline = performance.now() + timeoutMs
+    const deadline = performance.now() + timeoutLimit
     const expire = () => {
       void stop(slot)
       reject(new RenderTimeoutError())
@@ -69,7 +76,7 @@ export async function productionWorkerRenderer(
     const onExit = (code: number) => {
       reject(new Error(`VueForge SSR worker exited with code ${String(code)}.`))
     }
-    const timer = setTimeout(expire, timeoutMs)
+    const timer = setTimeout(expire, timeoutLimit)
     worker.once('message', onMessage)
     worker.once('error', reject)
     worker.once('exit', onExit)
@@ -105,7 +112,7 @@ export async function productionWorkerRenderer(
     const idle = [...slots].find(
       ({ busy, termination }) => !busy && !termination,
     )
-    const slot = idle ?? (slots.size < maxConcurrent ? start() : undefined)
+    const slot = idle ?? (slots.size < concurrentLimit ? start() : undefined)
     if (!slot) throw new RenderBusyError()
 
     const reply = await ask(slot, [props, context])

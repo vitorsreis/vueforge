@@ -59,7 +59,7 @@ test('a timed-out development render holds its slot until it settles', async (t)
   finished.resolve()
   const response = await post({})
   assert.equal(response.status, 200)
-  assert.deepEqual(await response.json(), { head: '', content: result.content })
+  assert.deepEqual(await response.json(), { head: [], content: result.content })
 })
 
 test('production can replace a worker after a synchronous render overruns its deadline', async (t) => {
@@ -72,6 +72,7 @@ test('production can replace a worker after a synchronous render overruns its de
     `import { threadId } from 'node:worker_threads'
     export async function render(props, context) {
       if (props?.defer) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_200)
+      if (props?.oversized) return { content: '\u00e9'.repeat(12), teleportHead: '123456789', modules: [] }
       return { content: threadId + ':' + context.value, teleportHead: '', modules: [] }
     }`,
   )
@@ -81,9 +82,11 @@ test('production can replace a worker after a synchronous render overruns its de
     await rm(root, { recursive: true, force: true })
   })
   renderer = await productionWorkerRenderer(pathToFileURL(entry), {
-    timeoutMs: 500,
-    maxConcurrent: 1,
+    renderTimeoutMs: 500,
+    maxConcurrentRenders: 1,
+    maxOutputBytes: 32,
   })
+  await assert.rejects(renderer.render({ oversized: true }), /output limit/)
   const first = await renderer.render({}, { value: 'first' })
   assert.match(first.content, /^[1-9]\d*:first$/)
   const pending = renderer.render({ defer: true }, { value: 'late' })

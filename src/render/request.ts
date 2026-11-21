@@ -1,7 +1,9 @@
 export const MAX_REQUEST_BYTES = 64 * 1024
 
+export type RenderOutputFormat = 'html' | 'json'
+
 export interface RenderRequest {
-  format: 'html' | 'json'
+  format: RenderOutputFormat
   hydrate: boolean
   props?: Record<string, unknown>
   context?: Record<string, unknown>
@@ -15,14 +17,17 @@ function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === 'object' && value !== null && !Array.isArray(value)
 }
 
-export function parseRenderRequest(value: unknown): RenderRequest {
+export function parseRenderRequest(
+  value: unknown,
+  defaultFormat: RenderOutputFormat = 'json',
+): RenderRequest {
   if (!isRecord(value)) {
     throw new RenderInputError(
       'The request body must be a JSON object. Send {} with Content-Type: application/json to use default props.',
     )
   }
 
-  const { props, context, format = 'html', hydrate = false } = value
+  const { props, context, format = defaultFormat, hydrate = false } = value
   if (props !== undefined && !isRecord(props)) {
     throw new RenderInputError(
       '"props" must be a JSON object, for example {"props":{"title":"Hello"}}.',

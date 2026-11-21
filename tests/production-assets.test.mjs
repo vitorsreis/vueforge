@@ -35,6 +35,7 @@ const Details = defineAsyncComponent(() => import('./Details.vue'))
 </script>
 <template><main><Details /></main></template>`,
     vite: {},
+    build: { outDir: '../artifacts' },
   }
   await buildProject(root, tempDir, config)
   await rm(join(publicDir, 'previous.txt'))

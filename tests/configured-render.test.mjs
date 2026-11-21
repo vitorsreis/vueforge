@@ -106,8 +106,8 @@ const entry = [
 
 for (const { name, config, files, content } of [
   {
-    name: 'file',
-    config: { file: './src/Chosen.vue' },
+    name: 'component entry',
+    config: { entry: './src/Chosen.vue' },
     files: {
       'src/Chosen.vue': [
         '<script>',
@@ -194,7 +194,7 @@ for (const { name, config, files, content } of [
         const css = result.head.find(({ attrs }) => attrs?.rel === 'stylesheet')
         assert.ok(css)
         assert.match(
-          await readFile(join(cwd, '.vueforge/client', css.attrs.href), 'utf8'),
+          await readFile(join(cwd, 'dist/client', css.attrs.href), 'utf8'),
           /\.inline\[data-v-\w+\]\s*\{\s*color:\s*teal/,
         )
       }
@@ -205,8 +205,8 @@ for (const { name, config, files, content } of [
 test('validates configured render sources before building', async (t) => {
   const cwd = await project(t, {})
   for (const [config, expected] of [
-    [{ file: './src/App.vue', template }, /file.*template|template.*file/i],
-    [{ file: ' ' }, /\bfile\b/i],
+    [{ entry: './src/App.vue', template }, /entry.*template|template.*entry/i],
+    [{ entry: ' ' }, /\bentry\b/i],
     [{ template: false }, /\btemplate\b/i],
     [{ entry: [] }, /\bentry\b/i],
   ]) {
@@ -294,7 +294,7 @@ test(
       ]) {
         assert.equal(response.status, 200, await response.clone().text())
         assert.deepEqual(await response.json(), {
-          head: '',
+          head: [],
           content: '<h1>Untitled ' + label + '</h1>',
         })
       }
