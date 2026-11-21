@@ -225,9 +225,7 @@ export function createRenderHandler(
         options.templateNames !== undefined &&
         !options.templateNames.includes(parsed.template)
       ) {
-        throw new RenderInputError(
-          `Unknown template "${parsed.template}". Choose one of: ${options.templateNames.join(', ')}.`,
-        )
+        throw new RenderInputError(`Unknown template "${parsed.template}".`)
       }
       const result = await renderRequest(parsed.context, parsed.template)
       const formatOptions = {

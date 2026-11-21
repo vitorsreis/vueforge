@@ -30,13 +30,13 @@ rejected before Vue SSR runs:
 ```sh
 curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
   -H 'Content-Type: application/json' \
-  -d '{"props":{"title":"Unknown template"}}'
+  -d '{}'
 ```
 
-The server returns `400` and lists the matching template names:
+The server returns `400` with a JSON error:
 
 ```json
 {
-  "error": "Unknown template \"missing\". Choose one of: home.page."
+  "error": "Unknown template \"missing\"."
 }
 ```

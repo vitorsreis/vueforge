@@ -99,9 +99,7 @@ export async function renderProject(
     sources?.kind === 'templates' &&
     !Object.hasOwn(sources.templates, request.template)
   ) {
-    throw new Error(
-      `Unknown template "${request.template}". Choose one of: ${Object.keys(sources.templates).join(', ')}.`,
-    )
+    throw new Error(`Unknown template "${request.template}".`)
   }
   const rendered = await render(request.context, request.template)
   const response = formatRenderResponse(

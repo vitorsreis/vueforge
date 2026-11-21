@@ -29,6 +29,17 @@ test('framework-neutral render handler maps input errors', async () => {
   assert.match(response.body.error, /request body.*JSON object/i)
 })
 
+test('rejects unknown catalog templates without enumerating the catalog', async () => {
+  const handle = createRenderHandler(render, {
+    requireTemplate: true,
+    templateNames: ['home', 'invoice'],
+  })
+  const response = await handle({ body: {}, template: 'missing' })
+
+  assert.equal(response.status, 400)
+  assert.equal(response.body.error, 'Unknown template "missing".')
+})
+
 test('enforces the output limit after response formatting', async () => {
   const handle = createRenderHandler(render, { maxOutputBytes: 8 })
   const response = await handle({ body: { props: { title: 'Large' } } })
