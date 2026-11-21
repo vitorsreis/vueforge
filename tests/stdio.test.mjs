@@ -50,7 +50,7 @@ if (title === 'Throw') throw new Error('component failure')
   await writeFile(
     join(cwd, 'vueforge.config.ts'),
     `console.log('config diagnostic')
-export default { tempDir: 'cache/temp', build: { outDir: 'cache/render output' }, port: 0 }`,
+export default { tempDir: 'cache/temp', build: { outDir: 'cache/render output' }, server: { port: 0 } }`,
   )
   const build = run(cwd, 'build')
   assert.equal(build.status, 0, build.stderr)

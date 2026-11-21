@@ -65,7 +65,7 @@ test('a timed-out development render holds its slot until it settles', async (t)
 test('production can replace a worker after a synchronous render overruns its deadline', async (t) => {
   const { productionWorkerRenderer } =
     await import('../dist/server/production/worker-renderer.js')
-  const root = await mkdtemp(join(tmpdir(), 'vueforge-worker-test-'))
+  const root = await mkdtemp(join(tmpdir(), 'Vueforge-worker-test-'))
   const entry = join(root, 'entry.mjs')
   await writeFile(
     entry,
@@ -106,5 +106,5 @@ test('production can replace a worker after a synchronous render overruns its de
       await delay(100)
     }
   }
-  assert.fail('VueForge did not replace the timed-out worker')
+  assert.fail('Vueforge did not replace the timed-out worker')
 })

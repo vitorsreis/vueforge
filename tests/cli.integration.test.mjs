@@ -72,16 +72,21 @@ function renderStatusForHost(url, host) {
   })
 }
 
-async function checkRenderResponses(url) {
+async function checkRenderResponses(url, development) {
   const page = await fetch(url, { signal: AbortSignal.timeout(5000) })
   assert.equal(page.status, 200)
   assert.match(page.headers.get('content-type'), /^application\/json\b/)
   assert.deepEqual(await page.json(), {
-    message: 'Welcome to VueForge!',
+    message: 'Welcome to Vueforge!',
     poweredBy: 'Vitor Reis',
     repo: 'https://github.com/vitorsreis/vueforge',
     version: packageVersion,
   })
+  const prettyWelcome = await fetch(url + '?pretty=true')
+  assert.match(
+    await prettyWelcome.text(),
+    new RegExp('\\n {2}"message": "Welcome to Vueforge!",\\n'),
+  )
 
   for (const [body, status, message] of [
     ['{', 400, /JSON object/],
@@ -101,7 +106,18 @@ async function checkRenderResponses(url) {
       const response = await post(url, JSON.stringify({ props: { title } }))
       assert.equal(response.status, 200)
       assert.deepEqual(await response.json(), {
-        head: [],
+        head: development
+          ? [
+              {
+                tag: 'script',
+                attrs: { type: 'module', src: '/@vite/client' },
+              },
+              {
+                tag: 'script',
+                attrs: { type: 'module', src: '/@vueforge/client' },
+              },
+            ]
+          : [],
         content: '<h1>' + title + '</h1>',
       })
     }),
@@ -115,7 +131,7 @@ async function checkComponentReload(cwd, url) {
   for (;;) {
     const response = await post(url, '{}')
     assert.equal(response.status, 200)
-    if ((await response.json()).content === '<h2>VueForge</h2>') break
+    if ((await response.json()).content === '<h2>vueforge</h2>') break
     assert.ok(Date.now() < deadline, 'SSR did not pick up the SFC edit')
     await delay(50)
   }
@@ -140,11 +156,10 @@ for (const mode of [
       // An invalid bind address makes ignoring the development CLI override observable.
       const config = dev
         ? {
-            host: 'invalid.invalid',
-            port: 1,
+            server: { host: 'invalid.invalid', port: 1 },
             vite: { server: { allowedHosts: ['preview.example.test'] } },
           }
-        : { host: '127.0.0.1', port }
+        : { server: { host: '127.0.0.1', port } }
       if (mode === 'production with custom tempDir') {
         config.tempDir = 'cache/temp'
         config.build = { outDir: 'cache/render output' }
@@ -199,8 +214,29 @@ for (const mode of [
         assert.equal(health.status, 200)
         assert.equal(health.headers.get('cache-control'), 'no-store')
         assert.deepEqual(await health.json(), { status: 'ok' })
+        const prettyHealth = await fetch(url + '/healthz?pretty=1')
+        assert.match(
+          await prettyHealth.text(),
+          new RegExp('\\n {2}"status": "ok"\\n'),
+        )
+        const cors = await fetch(url + '/healthz', {
+          headers: { Origin: 'https://client.example' },
+        })
+        assert.equal(cors.headers.get('access-control-allow-origin'), '*')
+        const preflight = await fetch(url + '/render', {
+          method: 'OPTIONS',
+          headers: {
+            Origin: 'https://client.example',
+            'Access-Control-Request-Method': 'POST',
+          },
+        })
+        assert.equal(preflight.status, 204)
+        assert.match(
+          preflight.headers.get('access-control-allow-methods'),
+          /POST/,
+        )
 
-        await checkRenderResponses(url)
+        await checkRenderResponses(url, dev)
 
         if (dev) {
           assert.equal(

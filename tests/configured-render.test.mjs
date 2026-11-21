@@ -3,7 +3,7 @@ import { spawn, spawnSync } from 'node:child_process'
 import { once } from 'node:events'
 import { mkdir, mkdtemp, readFile, rm, writeFile } from 'node:fs/promises'
 import { createServer } from 'node:net'
-import { join } from 'node:path'
+import { dirname, join } from 'node:path'
 import { execPath } from 'node:process'
 import test from 'node:test'
 import { setTimeout as delay } from 'node:timers/promises'
@@ -23,7 +23,10 @@ async function project(t, config, files = {}) {
       'vueforge.config.ts': 'export default ' + JSON.stringify(config),
       'src/App.vue': '<template><p>Default app</p></template>',
       ...files,
-    }).map(([file, content]) => writeFile(join(cwd, file), content)),
+    }).map(async ([file, content]) => {
+      await mkdir(dirname(join(cwd, file)), { recursive: true })
+      await writeFile(join(cwd, file), content)
+    }),
   )
   return cwd
 }
@@ -107,7 +110,7 @@ const entry = [
 for (const { name, config, files, content } of [
   {
     name: 'component entry',
-    config: { source: './src/Chosen.vue' },
+    config: { template: './src/Chosen.vue' },
     files: {
       'src/Chosen.vue': [
         '<script>',
@@ -124,20 +127,20 @@ for (const { name, config, files, content } of [
   },
   {
     name: 'template',
-    config: { source: template },
+    config: { template },
     files: { 'LocalChild.vue': '<template><span>Welcome</span></template>' },
     content:
       /^<main class="inline" data-v-\w+><span(?: data-v-\w+)?>Welcome<\/span>Hello Ada<\/main>$/,
   },
   {
     name: 'entry',
-    config: { source: './src/custom-entry.ts' },
+    config: { entry: './src/custom-entry.ts' },
     files: { 'src/custom-entry.ts': entry },
     content: /^<h1>Hello Ada<\/h1>$/,
   },
   {
     name: 'named Vue SSR factory',
-    config: { source: './src/app.ts' },
+    config: { entry: './src/app.ts' },
     files: {
       'src/app.ts': [
         "import { createSSRApp, h } from 'vue'",
@@ -205,9 +208,9 @@ for (const { name, config, files, content } of [
 test('validates configured render sources before building', async (t) => {
   const cwd = await project(t, {})
   for (const [config, expected] of [
-    [{ source: ' ' }, /\bsource\b/i],
-    [{ source: false }, /\bsource\b/i],
-    [{ source: [] }, /\bsource\b/i],
+    [{ template: ' ' }, /\btemplate\b/i],
+    [{ template: false }, /\btemplate\b/i],
+    [{ template: [] }, /\btemplate\b/i],
   ]) {
     await writeFile(
       join(cwd, 'vueforge.config.ts'),
@@ -225,11 +228,11 @@ test(
   async (t) => {
     const cwd = await project(
       t,
-      { vite: { define: { __VUEFORGE_INLINE__: JSON.stringify('inline') } } },
+      { vite: { define: { __vueforge_INLINE__: JSON.stringify('inline') } } },
       {
         'src/App.vue': `<script setup>
 import Label from '@/Label.vue'
-const inline = __VUEFORGE_INLINE__
+const inline = __vueforge_INLINE__
 </script>
 <template><main><Label /> {{ inline }}</main></template>`,
         'src/Label.vue': '<template><span>Alias works</span></template>',
@@ -273,7 +276,7 @@ test(
   async (t) => {
     const cwd = await project(
       t,
-      { source: './src/custom-entry.ts' },
+      { entry: './src/custom-entry.ts' },
       { 'src/custom-entry.ts': entry },
     )
     await serve(cwd, async (post) => {
@@ -293,7 +296,13 @@ test(
       ]) {
         assert.equal(response.status, 200, await response.clone().text())
         assert.deepEqual(await response.json(), {
-          head: [],
+          head: [
+            { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+            {
+              tag: 'script',
+              attrs: { type: 'module', src: '/@vueforge/client' },
+            },
+          ],
           content: '<h1>Untitled ' + label + '</h1>',
         })
       }
@@ -316,5 +325,57 @@ test(
           head.findIndex(({ attrs }) => attrs?.src === '/@vueforge/client'),
       )
     })
+  },
+)
+
+test(
+  'renders a named template from a configured catalog',
+  { timeout: 60000 },
+  async (t) => {
+    const cwd = await project(
+      t,
+      { templates: 'src/templates' },
+      {
+        'src/templates/home.vue':
+          '<template><h1>Home {{ title }}</h1></template><script setup>defineProps({ title: String })</script>',
+        'src/templates/invoice.vue':
+          '<template><h1>Invoice {{ number }}</h1></template><script setup>defineProps({ number: String })</script>',
+      },
+    )
+    await serve(cwd, async (post) => {
+      const response = await post({
+        template: 'invoice',
+        props: { number: 'A-42' },
+      })
+      assert.equal(response.status, 200, await response.clone().text())
+      assert.equal((await response.json()).content, '<h1>Invoice A-42</h1>')
+
+      const missing = await post({ props: { number: 'A-42' } })
+      assert.equal(missing.status, 400)
+      assert.match((await missing.json()).error, /template.*required/i)
+    })
+  },
+)
+
+test(
+  'renders a named template from a production catalog build',
+  { timeout: 60000 },
+  async (t) => {
+    const cwd = await project(
+      t,
+      { templates: 'src/templates' },
+      {
+        'src/templates/invoice.vue':
+          '<template><h1>Invoice {{ number }}</h1></template><script setup>defineProps({ number: String })</script>',
+      },
+    )
+    const build = run(cwd, 'build', {})
+    assert.equal(build.status, 0, build.stderr)
+    const render = run(cwd, 'render', {
+      template: 'invoice',
+      props: { number: 'A-42' },
+    })
+    assert.equal(render.status, 0, render.stderr)
+    assert.equal(JSON.parse(render.stdout).content, '<h1>Invoice A-42</h1>')
   },
 )

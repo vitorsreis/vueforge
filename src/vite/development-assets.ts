@@ -9,6 +9,15 @@ import { devClientPath } from './vue-app.js'
 const viteClientPath = '/@vite/client'
 const staticImports = new WeakMap<TransformResult, string[]>()
 
+function publicAssetUrl(path: string, base: string) {
+  if (/^https?:\/\//i.test(base)) {
+    const url = new URL(base)
+    url.pathname = `${url.pathname.replace(/\/$/, '')}${path}`
+    return url.href
+  }
+  return `${base.replace(/\/$/, '')}${path}`
+}
+
 function importedUrls(result: TransformResult) {
   const cached = staticImports.get(result)
   if (cached) return cached
@@ -30,6 +39,7 @@ function importedUrls(result: TransformResult) {
 export async function developmentAssets(
   client: DevEnvironment,
   modules: string[],
+  assetBase = '/',
 ): Promise<HeadTag[]> {
   const styles = new Map<string, HeadTag>()
   const visited = new Set([viteClientPath])
@@ -84,7 +94,7 @@ export async function developmentAssets(
     ...styles.values(),
     ...[viteClientPath, devClientPath].map((src): HeadTag => ({
       tag: 'script',
-      attrs: { type: 'module', src },
+      attrs: { type: 'module', src: publicAssetUrl(src, assetBase) },
     })),
   ]
 }

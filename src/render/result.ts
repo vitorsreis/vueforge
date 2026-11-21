@@ -28,12 +28,27 @@ export function formattedResponseBytes(response: FormattedRenderResponse) {
   return new TextEncoder().encode(body).byteLength
 }
 
-function hydrationData(id: string, value: Record<string, unknown>): HeadTag {
+function hydrationData(
+  id: string,
+  value: Record<string, unknown> | string,
+): HeadTag {
   return {
     tag: 'script',
     attrs: { type: 'application/json', id },
     content: JSON.stringify(value).replaceAll('<', '\\u003c'),
   }
+}
+
+function isVueMarker(entry: HeadEntry) {
+  return 'html' in entry && /^<!--(?:teleport|\[|\])/.test(entry.html)
+}
+
+function cleanContent(content: string, hydrate: boolean) {
+  if (hydrate) return content
+  return content.replace(
+    /<!--(?:teleport(?: start anchor| anchor| start| end)?|\[|\])-->/g,
+    '',
+  )
 }
 
 export function renderResponse(
@@ -56,17 +71,17 @@ export function renderResponse(
 
   return {
     head: format === 'html' ? entries.map(headEntryHtml).join('') : entries,
-    content,
+    content: cleanContent(content, request.hydrate),
   }
 }
 
 function renderHeadEntries(
   { teleportHead, assets }: RenderResult,
-  { hydrate, props, context }: Omit<RenderRequest, 'format'>,
+  { hydrate, props, context, template }: Omit<RenderRequest, 'format'>,
   includeScripts = hydrate,
 ): HeadEntry[] {
   const entries: HeadEntry[] = []
-  if (teleportHead) entries.push(...headEntriesFromHtml(teleportHead))
+  if (teleportHead) entries.push(...headEntriesFromHtml(teleportHead, hydrate))
 
   for (const asset of assets) {
     if (asset.tag === 'link') entries.push(asset)
@@ -82,39 +97,33 @@ function renderHeadEntries(
     entries.push(hydrationData('vueforge-props', props ?? {}))
     if (context !== undefined)
       entries.push(hydrationData('vueforge-context', context))
+    if (template !== undefined)
+      entries.push(hydrationData('vueforge-template', template))
   }
 
   if (includeScripts)
     entries.push(...assets.filter(({ tag }) => tag === 'script'))
 
-  return entries
+  return hydrate ? entries : entries.filter((entry) => !isVueMarker(entry))
 }
 
 function renderHtmlHead(
   { teleportHead, assets }: RenderResult,
-  { hydrate, props, context }: Omit<RenderRequest, 'format'>,
+  { hydrate, props, context, template }: Omit<RenderRequest, 'format'>,
   includeScripts = hydrate,
 ) {
-  let head = teleportHead
-  for (const asset of assets) {
-    if (asset.tag === 'link') head += headEntryHtml(asset)
-    if (asset.tag === 'style') {
-      head += headEntryHtml({
-        ...asset,
-        content: (asset.content ?? '').replace(/<\/(style)/gi, '<\\/$1'),
-      })
-    }
-  }
-  if (hydrate) {
-    head += headEntryHtml(hydrationData('vueforge-props', props ?? {}))
-    if (context !== undefined)
-      head += headEntryHtml(hydrationData('vueforge-context', context))
-  }
-  if (includeScripts) {
-    for (const asset of assets.filter(({ tag }) => tag === 'script'))
-      head += headEntryHtml(asset)
-  }
-  return head
+  return renderHeadEntries(
+    { teleportHead, assets, content: '' },
+    {
+      hydrate,
+      ...(props === undefined ? {} : { props }),
+      ...(context === undefined ? {} : { context }),
+      ...(template === undefined ? {} : { template }),
+    },
+    includeScripts,
+  )
+    .map(headEntryHtml)
+    .join('')
 }
 
 /** Formats a render as a JSON envelope or a complete HTML document. */
@@ -127,8 +136,8 @@ export function formatRenderResponse(
     return {
       format: 'json',
       body: {
-        head: renderHeadEntries(result, request),
-        content: result.content,
+        head: renderHeadEntries(result, request, development),
+        content: cleanContent(result.content, request.hydrate),
       },
     }
   }
@@ -136,6 +145,10 @@ export function formatRenderResponse(
   const head = renderHtmlHead(result, request, request.hydrate || development)
   return {
     format: 'html',
-    body: renderDocument(head, result.content, document),
+    body: renderDocument(
+      head,
+      cleanContent(result.content, request.hydrate),
+      document,
+    ),
   }
 }

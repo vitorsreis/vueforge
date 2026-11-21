@@ -262,7 +262,7 @@ try {
       await cp(fixture, join(cwd, 'src'), { recursive: true })
       await writeFile(
         join(cwd, 'vueforge.config.ts'),
-        `export default { source: ${JSON.stringify(path)} }`,
+        `export default { ${path.endsWith('.vue') ? 'template' : 'entry'}: ${JSON.stringify(path)} }`,
       )
       // Production runs before the development check edits the fixture's styles.
       await checkBrowser(browser, cwd, false, name)

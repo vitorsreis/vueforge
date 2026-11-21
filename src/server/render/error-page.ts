@@ -40,7 +40,7 @@ export function renderErrorPage(error: RenderErrorDetails): string {
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>VueForge SSR error</title>
+<title>Vueforge SSR error</title>
 <style>
 :root { color-scheme: dark; font-family: ui-sans-serif, system-ui, sans-serif; background: #171717; color: #f5f5f5; }
 body { margin: 0; min-height: 100vh; background: radial-gradient(circle at top right, #3b1717, #171717 48%); }
@@ -54,7 +54,7 @@ section { margin-top: 26px; }
 </style>
 </head>
 <body><main>
-<div class="brand">VueForge SSR error</div>
+<div class="brand">Vueforge SSR error</div>
 <h1>${title}</h1>
 ${details}
 </main></body>

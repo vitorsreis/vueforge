@@ -76,7 +76,7 @@ async function verifyServer(cli, cwd, body, expected) {
   }
 }
 
-const temp = await mkdtemp(join(tmpdir(), 'vueforge-qualification-'))
+const temp = await mkdtemp(join(tmpdir(), 'Vueforge-qualification-'))
 try {
   const tarball = archive
     ? resolve(archive)

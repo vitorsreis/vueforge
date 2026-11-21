@@ -37,6 +37,26 @@ test('enforces the output limit after response formatting', async () => {
   assert.match(response.body.error, /output limit/i)
 })
 
+test('includes development client scripts in JSON responses', async () => {
+  const handle = createRenderHandler(
+    async () => ({
+      content: '<h1>Dev</h1>',
+      teleportHead: '',
+      assets: [
+        { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+        { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
+      ],
+    }),
+    { development: true, interruptible: true },
+  )
+  const response = await handle({ body: {} })
+
+  assert.deepEqual(response.body.head, [
+    { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+    { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
+  ])
+})
+
 test('negotiates JSON by default and HTML by Accept quality', async () => {
   const handle = createRenderHandler(render)
 

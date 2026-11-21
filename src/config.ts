@@ -4,9 +4,26 @@ import { dirname, extname, relative, resolve } from 'node:path'
 import { loadConfigFromFile, mergeConfig, runnerImport } from 'vite'
 import type { ConfigEnv, Plugin } from 'vite'
 
-import type { VueForgeConfig } from './index.js'
-export { resolveAppSource } from './config/source.js'
-export type { AppSource } from './config/source.js'
+import type { VueforgeConfig } from './index.js'
+export { resolveAppSource, resolveAppSources } from './config/source.js'
+export type { AppSources, AppTemplate } from './config/source.js'
+
+export function resolveAssetBase(origin: unknown, base: unknown = '/') {
+  if (typeof base !== 'string' || !base.trim() || !base.startsWith('/')) {
+    throw new Error(
+      'vueforge.config.ts: base must be a non-empty path starting with /.',
+    )
+  }
+  const normalizedBase = base.endsWith('/') ? base : `${base}/`
+  if (origin === undefined) return normalizedBase
+  if (typeof origin !== 'string' || !/^https?:\/\//i.test(origin)) {
+    throw new Error(
+      'vueforge.config.ts: origin must be an absolute http:// or https:// URL.',
+    )
+  }
+  return new URL(normalizedBase, origin.endsWith('/') ? origin : `${origin}/`)
+    .href
+}
 
 const configExtensions = new Set(['.cjs', '.cts', '.js', '.mjs', '.mts', '.ts'])
 
@@ -58,14 +75,14 @@ async function resolveProjectConfigFile(
 
   if (!configExtensions.has(extname(file).toLowerCase())) {
     throw new Error(
-      'The VueForge configuration file must use .js, .mjs, .cjs, .ts, .mts, or .cts.',
+      'The Vueforge configuration file must use .js, .mjs, .cjs, .ts, .mts, or .cts.',
     )
   }
   if (!fileStat) {
-    throw new Error(`VueForge configuration file does not exist: ${configFile}`)
+    throw new Error(`Vueforge configuration file does not exist: ${configFile}`)
   }
   if (!fileStat.isFile()) {
-    throw new Error(`VueForge configuration path is not a file: ${configFile}`)
+    throw new Error(`Vueforge configuration path is not a file: ${configFile}`)
   }
 
   return file
@@ -120,7 +137,7 @@ export async function loadProjectConfig(
         ? config.root
         : root),
   )
-  return { ...config, root: resolvedRoot } as VueForgeConfig
+  return { ...config, root: resolvedRoot } as VueforgeConfig
 }
 
 export function resolveTempDir(root: string, tempDir: unknown = '.vueforge') {
@@ -149,7 +166,7 @@ export interface ResolvedRenderLimits {
 }
 
 export function resolveRenderLimits(
-  config: VueForgeConfig,
+  config: VueforgeConfig,
 ): ResolvedRenderLimits {
   const limits = config.limits ?? {}
   const values: ResolvedRenderLimits = {

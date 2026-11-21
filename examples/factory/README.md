@@ -1,9 +1,17 @@
 # Factory example
 
-This example uses `source: 'src/entry.ts'`. VueForge calls the factory for each
+This example uses `entry: 'src/entry.ts'`. Vueforge calls the factory for each
 render, so request context can be provided without shared module state.
 
 ```sh
 npx vueforge serve --dev
-curl --json '{"context":{"name":"Ada"}}' http://127.0.0.1:9901/render
+```
+
+Example requests are in [factory.http](./factory.http).
+
+For production:
+
+```sh
+npx vueforge build
+npx vueforge serve
 ```

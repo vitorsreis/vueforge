@@ -2,9 +2,14 @@ import { createRequire } from 'node:module'
 
 import express from 'express'
 
-import { resolveBuildOutputDir, resolveRenderLimits } from '../config.js'
+import {
+  resolveAssetBase,
+  resolveBuildOutputDir,
+  resolveAppSources,
+  resolveRenderLimits,
+} from '../config.js'
 import { resolveServerTransport } from './transports/config.js'
-import type { VueForgeConfig } from '../index.js'
+import type { VueforgeConfig } from '../index.js'
 import type { Render } from '../render/renderer.js'
 import { createRenderHandler } from './render/handler.js'
 import { developmentRenderer } from './development.js'
@@ -12,6 +17,7 @@ import { productionRenderer } from './production/renderer.js'
 import { productionWorkerRenderer } from './production/worker-renderer.js'
 import { renderRoute } from './render/route.js'
 import { createNodeServer, startNodeAdapter } from './adapter/node.js'
+import { createCorsMiddleware } from './http/cors.js'
 import { serveStdio } from './transports/stdio.js'
 import type { ServerTransport } from './transports/http.js'
 
@@ -34,21 +40,28 @@ interface RenderService {
 
 function transportFromOptions(
   root: string,
-  config: VueForgeConfig,
+  config: VueforgeConfig,
   options: ServeProjectOptions,
 ): ServerTransport {
   return resolveServerTransport(root, config, options)
 }
 
 function handlerOptions(
-  config: VueForgeConfig,
+  config: VueforgeConfig,
   limits: ReturnType<typeof resolveRenderLimits>,
   extra: { development?: boolean; interruptible?: boolean; root?: string } = {},
+  sources?: Awaited<ReturnType<typeof resolveAppSources>>,
 ) {
   return {
     ...limits,
     defaultFormat: config.format ?? ('json' as const),
     ...(config.document === undefined ? {} : { document: config.document }),
+    ...(sources?.templates === undefined
+      ? {}
+      : {
+          requireTemplate: true,
+          templateNames: Object.keys(sources.templates),
+        }),
     ...extra,
   }
 }
@@ -58,29 +71,34 @@ export async function serveProject(
   dev: boolean,
   options: ServeProjectOptions,
   _tempDir: string,
-  config: VueForgeConfig = {},
+  config: VueforgeConfig = {},
 ) {
   if (
-    config.shutdownTimeoutMs !== undefined &&
-    (!Number.isSafeInteger(config.shutdownTimeoutMs) ||
-      config.shutdownTimeoutMs < 1)
+    config.server?.shutdownTimeoutMs !== undefined &&
+    (!Number.isSafeInteger(config.server.shutdownTimeoutMs) ||
+      config.server.shutdownTimeoutMs < 1)
   ) {
     throw new Error(
-      'vueforge.config.ts: shutdownTimeoutMs must be a positive safe integer.',
+      'vueforge.config.ts: server.shutdownTimeoutMs must be a positive safe integer.',
     )
   }
   const transport = transportFromOptions(root, config, options)
   const limits = resolveRenderLimits(config)
+  const sources =
+    dev || config.templates !== undefined
+      ? await resolveAppSources(root, config)
+      : undefined
 
   if (transport.kind === 'stdio') {
     if (dev) throw new Error('The stdio transport cannot be used with --dev.')
     const renderer = await productionRenderer(
       resolveBuildOutputDir(root, config.build?.outDir),
+      resolveAssetBase(config.origin, config.base),
       (entry) => productionWorkerRenderer(entry, limits),
     )
     const handleRender = createRenderHandler(
       renderer.render,
-      handlerOptions(config, limits),
+      handlerOptions(config, limits, {}, sources),
     )
     try {
       await serveStdio({
@@ -95,7 +113,8 @@ export async function serveProject(
 
   const app = express()
   app.disable('x-powered-by')
-  const nodeServer = await createNodeServer(root, config.ssl, app)
+  app.use(createCorsMiddleware(config.server?.cors))
+  const nodeServer = await createNodeServer(root, config.server?.ssl, app)
 
   let renderer: RenderService
   if (dev) {
@@ -112,6 +131,7 @@ export async function serveProject(
     renderer = {
       ...(await productionRenderer(
         resolveBuildOutputDir(root, config.build?.outDir),
+        resolveAssetBase(config.origin, config.base),
         (entry) => productionWorkerRenderer(entry, limits),
       )),
       hostGuard: undefined,
@@ -120,26 +140,44 @@ export async function serveProject(
 
   if (renderer.hostGuard !== undefined) app.use(renderer.hostGuard)
 
-  app.get('/healthz', (_request, response) => {
-    response.set('Cache-Control', 'no-store').json({ status: 'ok' })
+  function sendJson(
+    request: express.Request,
+    response: express.Response,
+    value: unknown,
+  ) {
+    const pretty =
+      request.query.pretty === '1' || request.query.pretty === 'true'
+    response
+      .type('json')
+      .send(JSON.stringify(value, null, pretty ? 2 : undefined))
+  }
+
+  app.get('/healthz', (request, response) => {
+    response.set('Cache-Control', 'no-store')
+    sendJson(request, response, { status: 'ok' })
   })
-  app.get('/', (_request, response) =>
-    response.json({
-      message: 'Welcome to VueForge!',
+  app.get('/', (request, response) => {
+    sendJson(request, response, {
+      message: 'Welcome to Vueforge!',
       poweredBy: 'Vitor Reis',
       repo: 'https://github.com/vitorsreis/vueforge',
       version,
-    }),
-  )
+    })
+  })
   app.use(
     '/render',
     renderRoute(
       renderer.render,
-      handlerOptions(config, limits, {
-        development: dev,
-        interruptible: dev,
-        ...(dev ? { root } : {}),
-      }),
+      handlerOptions(
+        config,
+        limits,
+        {
+          development: dev,
+          interruptible: dev,
+          ...(dev ? { root } : {}),
+        },
+        sources,
+      ),
     ),
   )
   app.use(
@@ -150,9 +188,9 @@ export async function serveProject(
     server: nodeServer,
     requestHandler: app,
     root,
-    ...(config.shutdownTimeoutMs === undefined
+    ...(config.server?.shutdownTimeoutMs === undefined
       ? {}
-      : { shutdownTimeoutMs: config.shutdownTimeoutMs }),
+      : { shutdownTimeoutMs: config.server.shutdownTimeoutMs }),
     transport,
   })
 
@@ -174,12 +212,12 @@ export async function serveProject(
   process.once('SIGINT', signalHandler)
   process.once('SIGTERM', signalHandler)
 
-  const protocol = config.ssl ? 'https' : 'http'
+  const protocol = config.server?.ssl ? 'https' : 'http'
   const address =
     transport.kind === 'unix'
       ? transport.path
       : `${transport.host.includes(':') ? `[${transport.host}]` : transport.host}:${String(transport.port)}`
-  console.log(`VueForge listening on ${protocol}://${address}`)
+  console.log(`Vueforge listening on ${protocol}://${address}`)
 
   return { close }
 }

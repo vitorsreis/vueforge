@@ -16,7 +16,7 @@ export function cliHelp(command?: CliCommand): string {
   if (command === 'serve') {
     return `Usage: vueforge serve [options]
 
-Start the VueForge HTTP server.
+Start the Vueforge HTTP server.
 
 Options:
   --dev                Use Vite development SSR and HMR
@@ -66,6 +66,7 @@ Render one request from standard input using the production build.
 
 Options:
   -f, --format <format> Output format: json (default) or html
+  --pretty              Indent JSON output
   --max-request-bytes <bytes>
                        Maximum request body size (positive integer)
   -r, --root <path>     Project root
@@ -82,7 +83,7 @@ Examples:
   vueforge render --format html < request.json`
   }
 
-  return `VueForge - Vue SSR renderer for any backend
+  return `vueforge - Vue SSR renderer for any backend
 
 Usage: vueforge <command> [options]
 

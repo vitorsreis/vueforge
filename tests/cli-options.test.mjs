@@ -178,6 +178,14 @@ test('loads a custom configuration file and supports explicit render formats', a
     head: [],
     content: '<h1>JSON</h1>',
   })
+
+  const pretty = run(
+    cwd,
+    ['render', '--config', 'config/vueforge.local.ts', '--pretty'],
+    '{"props":{"title":"Pretty"}}',
+  )
+  assert.equal(pretty.status, 0, pretty.stderr)
+  assert.match(pretty.stdout, new RegExp('\\n {2}"content": "<h1>Pretty</h1>"'))
 })
 
 test('reports invalid custom configuration paths clearly', async (t) => {
@@ -192,4 +200,27 @@ test('reports invalid custom configuration paths clearly', async (t) => {
     unsupported.stderr,
     /must use .js, .mjs, .cjs, .ts, .mts, or .cts/i,
   )
+})
+
+test('resolves build and render paths from a configured project root', async (t) => {
+  const cwd = await project(t)
+  const appRoot = join(cwd, 'app')
+  await mkdir(join(appRoot, 'src'), { recursive: true })
+  await writeFile(
+    join(cwd, 'vueforge.config.ts'),
+    "export default { root: 'app', tempDir: '.cache', build: { outDir: 'artifacts' } }",
+  )
+  await writeFile(
+    join(appRoot, 'src/App.vue'),
+    '<template><h1>{{ title }}</h1></template>\n<script setup>defineProps({ title: String })</script>',
+  )
+
+  const build = run(cwd, ['build'])
+  assert.equal(build.status, 0, build.stderr)
+  await access(join(appRoot, 'artifacts/client/.vite/manifest.json'))
+  await access(join(appRoot, 'artifacts/server/entry.mjs'))
+
+  const render = run(cwd, ['render'], '{"props":{"title":"Nested"}}')
+  assert.equal(render.status, 0, render.stderr)
+  assert.equal(JSON.parse(render.stdout).content, '<h1>Nested</h1>')
 })

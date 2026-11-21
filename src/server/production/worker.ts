@@ -26,7 +26,7 @@ if (
   !Number.isSafeInteger(maxOutputBytes) ||
   maxOutputBytes < 1
 ) {
-  throw new Error('VueForge could not initialize its SSR worker.')
+  throw new Error('Vueforge could not initialize its SSR worker.')
 }
 
 const port = parentPort

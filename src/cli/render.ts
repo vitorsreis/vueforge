@@ -5,7 +5,9 @@ import { TextDecoder } from 'node:util'
 import {
   loadProjectConfig,
   resolveBuildOutputDir,
+  resolveAssetBase,
   resolveRenderLimits,
+  resolveAppSources,
 } from '../config.js'
 import { parseRenderRequest } from '../render/request.js'
 import {
@@ -13,6 +15,7 @@ import {
   formattedResponseBytes,
 } from '../render/result.js'
 import { productionRenderer } from '../server/production/renderer.js'
+import type { VueforgeConfig } from '../index.js'
 
 async function readRequest(maxRequestBytes: number): Promise<unknown> {
   if (process.stdin.isTTY) return {}
@@ -51,7 +54,8 @@ export async function renderProject(
   root: string,
   outputFormat?: 'html' | 'json',
   configFile?: string,
-  limitsOverride?: { maxRequestBytes?: number },
+  limitsOverride?: VueforgeConfig['limits'],
+  pretty = false,
 ) {
   const writeResponse = process.stdout.write.bind(process.stdout)
   process.stdout.write = process.stderr.write.bind(process.stderr)
@@ -61,18 +65,42 @@ export async function renderProject(
     { command: 'serve', mode: 'production' },
     configFile,
   )
+  const projectRoot = config.root ?? root
   if (limitsOverride !== undefined)
     config.limits = { ...config.limits, ...limitsOverride }
   const limits = resolveRenderLimits(config)
+  const sources =
+    config.templates === undefined
+      ? undefined
+      : await resolveAppSources(projectRoot, config)
   const request = parseRenderRequest(
     await readRequest(limits.maxRequestBytes),
     config.format ?? 'json',
   )
   const { render } = await productionRenderer(
-    resolveBuildOutputDir(root, config.build?.outDir),
+    resolveBuildOutputDir(projectRoot, config.build?.outDir),
+    resolveAssetBase(config.origin, config.base),
   )
 
-  const rendered = await render(request.props, request.context)
+  if (sources?.templates && request.template === undefined) {
+    throw new Error(
+      '"template" is required when a template catalog is configured.',
+    )
+  }
+  if (
+    request.template !== undefined &&
+    sources?.templates !== undefined &&
+    !Object.hasOwn(sources.templates, request.template)
+  ) {
+    throw new Error(
+      `Unknown template "${request.template}". Choose one of: ${Object.keys(sources.templates).join(', ')}.`,
+    )
+  }
+  const rendered = await render(
+    request.props,
+    request.context,
+    request.template,
+  )
   const response = formatRenderResponse(
     rendered,
     outputFormat === undefined ? request : { ...request, format: outputFormat },
@@ -86,6 +114,6 @@ export async function renderProject(
   writeResponse(
     response.format === 'html'
       ? response.body
-      : JSON.stringify(response.body) + '\n',
+      : JSON.stringify(response.body, null, pretty ? 2 : undefined) + '\n',
   )
 }

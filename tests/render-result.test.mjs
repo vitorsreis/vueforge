@@ -71,15 +71,47 @@ test('parses Teleport head tags without losing nested content', () => {
   )
 
   assert.deepEqual(result.head, [
-    { html: '<!--teleport start anchor-->' },
     { tag: 'title', attrs: {}, content: 'Orders' },
     {
       tag: 'script',
       attrs: { type: 'application/ld+json' },
       content: '{"@type":"WebPage"}',
     },
+  ])
+})
+
+test('preserves Teleport anchors only for hydration', () => {
+  const result = {
+    teleportHead:
+      '<!--teleport start anchor--><title>Orders</title><!--teleport anchor-->',
+    assets: [],
+    content: '<main>Orders</main>',
+  }
+
+  const hydrated = renderResponse(result, { format: 'json', hydrate: true })
+  assert.deepEqual(hydrated.head.slice(0, 3), [
+    { html: '<!--teleport start anchor-->' },
+    { tag: 'title', attrs: {}, content: 'Orders' },
     { html: '<!--teleport anchor-->' },
   ])
+})
+
+test('removes Vue SSR markers from non-hydrated content', () => {
+  const result = renderResponse(
+    {
+      teleportHead:
+        '<!--teleport start anchor--><title>Orders</title><!--teleport anchor-->',
+      assets: [],
+      content:
+        '<!--[--><!--teleport start--><!--teleport end--><main>Orders</main><!--]-->',
+    },
+    { format: 'json', hydrate: false },
+  )
+
+  assert.deepEqual(result, {
+    head: [{ tag: 'title', attrs: {}, content: 'Orders' }],
+    content: '<main>Orders</main>',
+  })
 })
 
 test('formats JSON and HTML using the same structured head entries', () => {
@@ -92,13 +124,19 @@ test('formats JSON and HTML using the same structured head entries', () => {
     content: '<main>Orders</main>',
   }
 
-  const json = formatRenderResponse(result, {
-    format: 'json',
-    hydrate: false,
-  })
+  const json = formatRenderResponse(
+    result,
+    {
+      format: 'json',
+      hydrate: false,
+    },
+    { development: true },
+  )
   assert.equal(json.format, 'json')
   assert.deepEqual(json.body.head, [
     { tag: 'title', attrs: {}, content: 'Orders' },
+    { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+    { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
   ])
 
   const html = formatRenderResponse(

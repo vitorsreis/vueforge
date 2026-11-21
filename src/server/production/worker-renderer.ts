@@ -71,7 +71,7 @@ export async function productionWorkerRenderer(
       else resolve(message)
     }
     const onExit = (code: number) => {
-      reject(new Error(`VueForge SSR worker exited with code ${String(code)}.`))
+      reject(new Error(`Vueforge SSR worker exited with code ${String(code)}.`))
     }
     const timer = setTimeout(expire, timeoutLimit)
     worker.once('message', onMessage)
@@ -103,7 +103,7 @@ export async function productionWorkerRenderer(
     throw error
   }
 
-  const render: AppRender = async (props, context) => {
+  const render: AppRender = async (props, context, template) => {
     if (closed) throw new RenderBusyError()
     const idle = [...slots].find(
       ({ busy, termination }) => !busy && !termination,
@@ -111,10 +111,10 @@ export async function productionWorkerRenderer(
     const slot = idle ?? (slots.size < concurrentLimit ? start() : undefined)
     if (!slot) throw new RenderBusyError()
 
-    const reply = await ask(slot, [props, context])
+    const reply = await ask(slot, [props, context, template])
     if (reply.type === 'error') throw new Error(reply.detail)
     if (reply.type !== 'rendered')
-      throw new Error('Unexpected VueForge SSR worker response.')
+      throw new Error('Unexpected Vueforge SSR worker response.')
     return reply.result
   }
 

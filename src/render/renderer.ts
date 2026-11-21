@@ -10,6 +10,7 @@ interface RenderedApp {
 export type AppRender = (
   props?: Props,
   context?: Record<string, unknown>,
+  template?: string,
 ) => Promise<RenderedApp>
 
 type RenderEntry = (
@@ -28,7 +29,7 @@ export function renderFrom(entry: unknown): RenderEntry {
     typeof entry.render !== 'function'
   ) {
     throw new Error(
-      'VueForge could not load the SSR entry. Run vueforge build again.',
+      'Vueforge could not load the SSR entry. Run vueforge build again.',
     )
   }
 

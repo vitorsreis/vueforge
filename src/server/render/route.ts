@@ -56,12 +56,17 @@ export function renderRoute(
     async (req, res) => {
       const query =
         typeof req.query.error === 'string' ? req.query.error : undefined
+      const pretty = req.query.pretty === '1' || req.query.pretty === 'true'
       const response = await handleRender({
         body: req.body,
         accept: req.get('accept'),
         errorFormat: query === 'html' || query === 'json' ? query : undefined,
       })
       res.status(response.status).set(response.headers ?? {})
+      if (pretty && typeof response.body !== 'string') {
+        res.type('json').send(JSON.stringify(response.body, null, 2))
+        return
+      }
       if (typeof response.body === 'string')
         res.type('html').send(response.body)
       else res.json(response.body)

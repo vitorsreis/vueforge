@@ -13,8 +13,8 @@ import { build } from 'vite'
 
 import { clientAssetsFile, isClientAsset } from './build/assets.js'
 import { resolveBuildOutputDir } from './config.js'
-import { resolveAppSource } from './config/source.js'
-import type { VueForgeConfig } from './index.js'
+import { resolveAppSources } from './config/source.js'
+import type { VueforgeConfig } from './index.js'
 import { clientEntry, serverEntry, vueViteConfig } from './vite/vue-app.js'
 
 async function prepareOutput(
@@ -48,9 +48,9 @@ async function prepareOutput(
 export async function buildProject(
   root: string,
   tempDir: string,
-  project: VueForgeConfig = {},
+  project: VueforgeConfig = {},
 ) {
-  const source = await resolveAppSource(root, project)
+  const sources = await resolveAppSources(root, project)
   const config = project.vite ?? {}
   const outputDir = resolveBuildOutputDir(root, project.build?.outDir)
   const buildOverrides: {
@@ -68,7 +68,7 @@ export async function buildProject(
   const lockFile = join(tempDir, '.build.lock')
   const lock = await open(lockFile, 'wx').catch((error: unknown) => {
     if ((error as NodeJS.ErrnoException).code !== 'EEXIST') throw error
-    throw new Error('A VueForge build already holds the lock in ' + tempDir)
+    throw new Error('A vueforge build already holds the lock in ' + tempDir)
   })
   try {
     const staging = await mkdtemp(join(tempDir, '.build-'))
@@ -76,7 +76,7 @@ export async function buildProject(
       const clientOut = join(staging, 'client')
       const serverOut = join(staging, 'server')
       await build({
-        ...vueViteConfig(root, config, source),
+        ...vueViteConfig(root, config, sources, project.document?.rootId),
         build: {
           ...config.build,
           ...buildOverrides,
@@ -96,7 +96,7 @@ export async function buildProject(
       })
 
       await build({
-        ...vueViteConfig(root, config, source),
+        ...vueViteConfig(root, config, sources, project.document?.rootId),
         ssr: { ...config.ssr, noExternal: true },
         build: {
           ...config.build,

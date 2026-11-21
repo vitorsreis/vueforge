@@ -19,7 +19,7 @@ test('development compiles inline Vue templates with relative imports and CSS mo
     const renderer = await developmentRenderer(
       root,
       {
-        source: `<script setup>
+        template: `<script setup>
 import Child from './Child.vue'
 defineProps(['context'])
 </script>
@@ -88,7 +88,11 @@ defineProps({ show: Boolean, unused: Boolean })
     const server = createServer()
     const renderer = await developmentRenderer(
       root,
-      { vite: { server: { ws: false } } },
+      {
+        document: { rootId: 'custom-root' },
+        server: { cors: ['https://client.example'] },
+        vite: { server: { ws: false } },
+      },
       server,
       '127.0.0.1',
       0,
@@ -131,10 +135,17 @@ defineProps({ show: Boolean, unused: Boolean })
       server.on('request', (req, res) => renderer.middleware(req, res))
       await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve))
       const origin = `http://127.0.0.1:${server.address().port}`
-      const entry = await globalThis.fetch(`${origin}/@vueforge/client`)
+      const entry = await globalThis.fetch(`${origin}/@vueforge/client`, {
+        headers: { Origin: 'https://client.example' },
+      })
       assert.equal(entry.status, 200)
+      assert.equal(
+        entry.headers.get('access-control-allow-origin'),
+        'https://client.example',
+      )
       const entryCode = await entry.text()
       assert.match(entryCode, /vueforge-props/)
+      assert.match(entryCode, /getElementById\("custom-root"\)/)
       assert.match(entryCode, /vite:error/)
       assert.match(entryCode, /data-vueforge-error-overlay/)
       const styleModule = await globalThis.fetch(

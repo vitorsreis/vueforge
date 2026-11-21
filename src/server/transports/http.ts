@@ -73,7 +73,7 @@ export async function captureUnixSocket(
 ): Promise<UnixSocketIdentity> {
   const created = await lstat(path).catch(() => undefined)
   if (created === undefined) {
-    throw new Error(`VueForge could not verify the Unix socket path: ${path}`)
+    throw new Error(`Vueforge could not verify the Unix socket path: ${path}`)
   }
   return identity(created)
 }

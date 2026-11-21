@@ -5,46 +5,44 @@ import vue from '@vitejs/plugin-vue'
 import { normalizePath } from 'vite'
 import type { InlineConfig, Plugin, UserConfig } from 'vite'
 
-import type { AppSource } from '../config/source.js'
+import type { AppSources, AppTemplate } from '../config/source.js'
 
 export const clientEntry = 'virtual:vueforge-client'
 export const serverEntry = 'virtual:vueforge-server'
 export const devClientPath = '/@vueforge/client'
-const templateModule = 'virtual:vueforge-template'
 
-function entries(root: string, source: AppSource): Plugin {
-  // A file-shaped ID lets Vite resolve imports relative to the project root.
-  const templateId =
-    source.kind === 'template'
-      ? normalizePath(
-          join(
-            root,
-            `__vueforge_template_${createHash('sha256').update(source.code).digest('hex').slice(0, 16)}.vue`,
-          ),
-        )
-      : undefined
-  const appImport = JSON.stringify(
-    source.kind === 'template' ? templateModule : source.url,
+function templateId(root: string, name: string, source: AppTemplate) {
+  const value = source.kind === 'template' ? source.code : source.url
+  return normalizePath(
+    join(
+      root,
+      `__vueforge_template_${createHash('sha256')
+        .update(`${name}:${value}`)
+        .digest('hex')
+        .slice(0, 16)}.vue`,
+    ),
   )
-  const appFactory =
-    source.kind === 'entry'
-      ? `import * as entry from ${appImport}
-async function createApp(context, props = {}) {
-  const factory = entry.createApp ?? entry.default
-  if (typeof factory !== 'function') {
-    throw new Error('The Vue entry must export a createApp function or a default app factory.')
-  }
-  const result = await factory(context, props)
-  const app = result?.app ?? result
-  if (typeof app?.mount !== 'function' || !app.config) {
-    throw new Error('The Vue entry factory must return a Vue application or an object containing app.')
-  }
-  return app
-}`
-      : `import { camelize, createSSRApp } from 'vue'
-import App from ${appImport}
+}
 
-// Match the names Vue reserves for VNodes instead of component props.
+function importSource(source: AppTemplate, id: string) {
+  return source.kind === 'template' ? id : source.url
+}
+
+function componentFactory(
+  imports: string,
+  selected: string,
+  requireTemplate: boolean,
+) {
+  const selection = requireTemplate
+    ? `const App = templates[template]
+  if (!App) throw new Error(
+    'Unknown Vueforge template "' + template + '".',
+  )`
+    : `const App = templates.default`
+
+  return `${imports}
+const templates = ${selected}
+
 const reservedProps = new Set([
   '', 'key', 'ref', 'ref_for', 'ref_key', 'onVnodeBeforeMount', 'onVnodeMounted',
   'onVnodeBeforeUpdate', 'onVnodeUpdated', 'onVnodeBeforeUnmount', 'onVnodeUnmounted',
@@ -55,7 +53,7 @@ function declaredProps(component, names = new Set()) {
   if (Array.isArray(component.props)) {
     for (const name of component.props) names.add(camelize(name))
   } else {
-    for (const name in component.props) names.add(camelize(name))
+    for (const name in component.props ?? {}) names.add(camelize(name))
   }
   if (optionsAPI && typeof component !== 'function') {
     if (component.extends) declaredProps(component.extends, names)
@@ -64,7 +62,8 @@ function declaredProps(component, names = new Set()) {
   return names
 }
 
-function createApp(context, props = {}) {
+function createComponentApp(context, props = {}, template) {
+  ${selection}
   const declared = declaredProps(App)
   const input = context === undefined ? props : { ...props, context }
   const rootProps = Object.fromEntries(Object.entries(input).filter(([key]) => {
@@ -73,6 +72,56 @@ function createApp(context, props = {}) {
   }))
   return createSSRApp(App, rootProps)
 }`
+}
+
+function entryFactory(source: string) {
+  return `import * as entry from ${JSON.stringify(source)}
+async function createEntryApp(context, props = {}) {
+  const factory = entry.createApp ?? entry.default
+  if (typeof factory !== 'function') throw new Error(
+    'The Vue entry must export a createApp function or a default app factory.',
+  )
+  const result = await factory(context, props)
+  const app = result?.app ?? result
+  if (typeof app?.mount !== 'function' || !app.config) throw new Error(
+    'The Vue entry factory must return a Vue application or an object containing app.',
+  )
+  return app
+}`
+}
+
+function entries(root: string, sources: AppSources, rootId: string): Plugin {
+  const inline = new Map<string, string>()
+  let appFactory: string
+
+  if (sources.entry) {
+    appFactory = entryFactory(sources.entry)
+  } else {
+    let templates: Record<string, AppTemplate>
+    if (sources.templates !== undefined) {
+      templates = sources.templates
+    } else if (sources.template !== undefined) {
+      templates = { default: sources.template }
+    } else {
+      throw new Error('Vueforge requires a template or entry.')
+    }
+    const imports: string[] = ["import { camelize, createSSRApp } from 'vue'"]
+    const selected: string[] = []
+    for (const [name, source] of Object.entries(templates)) {
+      const id =
+        source.kind === 'template' ? templateId(root, name, source) : source.url
+      const importId = importSource(source, id)
+      if (source.kind === 'template') inline.set(id, source.code)
+      const variable = `Template${String(selected.length)}`
+      imports.push(`import ${variable} from ${JSON.stringify(importId)}`)
+      selected.push(`${JSON.stringify(name)}: ${variable}`)
+    }
+    appFactory = componentFactory(
+      imports.join('\n'),
+      `{ ${selected.join(', ')} }`,
+      sources.templates !== undefined,
+    )
+  }
 
   return {
     name: 'vueforge-entries',
@@ -80,11 +129,14 @@ function createApp(context, props = {}) {
     resolveId(id) {
       if (id === devClientPath) return '\0' + clientEntry
       if (id === clientEntry || id === serverEntry) return '\0' + id
-      if (id === templateModule || id === templateId) return templateId
+      if (inline.has(id)) return id
       return undefined
     },
 
     load(id) {
+      const inlineCode = inline.get(id)
+      if (inlineCode !== undefined) return inlineCode
+
       if (id === '\0' + clientEntry) {
         return `${appFactory}
 function readData(id) {
@@ -95,11 +147,12 @@ const head = document.head
 const anchor = Array.from(head.childNodes).find(
   (node) => node.nodeType === Node.COMMENT_NODE && node.nodeValue === 'teleport start anchor',
 )
-// shortcut: Vue 3.5's teleport cursor skips existing head tags; use a public API when available.
 if (anchor && !head._lpa) head._lpa = anchor
 async function hydrate() {
-  const app = await createApp(readData('vueforge-context'), readData('vueforge-props'))
-  app.mount('#app')
+  const app = ${sources.entry ? 'await createEntryApp' : 'createComponentApp'}(readData('vueforge-context'), readData('vueforge-props'), readData('vueforge-template'))
+  const root = document.getElementById(${JSON.stringify(rootId)})
+  if (!root) throw new Error(${JSON.stringify(`Vueforge hydration root was not found: ${rootId}`)})
+  app.mount(root)
 }
 hydrate()
 function removeErrorOverlay() {
@@ -110,16 +163,7 @@ function showErrorOverlay(payload) {
   removeErrorOverlay()
   const overlay = document.createElement('div')
   overlay.dataset.vueforgeErrorOverlay = 'true'
-  Object.assign(overlay.style, {
-    background: '#171717',
-    color: '#f5f5f5',
-    fontFamily: 'ui-sans-serif, system-ui, sans-serif',
-    inset: '0',
-    overflow: 'auto',
-    padding: '48px 24px',
-    position: 'fixed',
-    zIndex: '2147483647',
-  })
+  Object.assign(overlay.style, { background: '#171717', color: '#f5f5f5', fontFamily: 'ui-sans-serif, system-ui, sans-serif', inset: '0', overflow: 'auto', padding: '48px 24px', position: 'fixed', zIndex: '2147483647' })
   const content = document.createElement('div')
   Object.assign(content.style, { margin: '0 auto', maxWidth: '1120px' })
   const title = document.createElement('h1')
@@ -154,19 +198,14 @@ if (import.meta.hot) {
       if (id === '\0' + serverEntry) {
         return `${appFactory}
 import { renderToString } from 'vue/server-renderer'
-export async function render(props, context) {
+export async function render(props, context, template) {
   const ssr = {}
-  const app = await createApp(context, props)
+  const app = await ${sources.entry ? 'createEntryApp' : 'createComponentApp'}(context, props, template)
   app.config.throwUnhandledErrorInProduction = true
   const content = await renderToString(app, ssr)
-  return {
-    content,
-    teleportHead: ssr.teleports?.head ?? '',
-    modules: [...(ssr.modules ?? [])],
-  }
+  return { content, teleportHead: ssr.teleports?.head ?? '', modules: [...(ssr.modules ?? [])] }
 }`
       }
-      if (source.kind === 'template' && id === templateId) return source.code
       return undefined
     },
   }
@@ -175,13 +214,14 @@ export async function render(props, context) {
 export function vueViteConfig(
   root: string,
   config: UserConfig,
-  source: AppSource,
+  sources: AppSources,
+  rootId = 'app',
 ): InlineConfig {
   return {
     ...config,
     root,
     base: '/',
     configFile: false,
-    plugins: [entries(root, source), vue(), ...(config.plugins ?? [])],
+    plugins: [entries(root, sources, rootId), vue(), ...(config.plugins ?? [])],
   }
 }

@@ -3,31 +3,34 @@ import type { Server } from 'node:http'
 import { hostValidationMiddleware } from 'host-validation-middleware'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 
-import { resolveAppSource } from '../config/source.js'
-import type { VueForgeConfig } from '../index.js'
+import { resolveAppSources } from '../config/source.js'
+import { resolveAssetBase } from '../config.js'
+import type { VueforgeConfig } from '../index.js'
 import { developmentAssets } from '../vite/development-assets.js'
 import { serverEntry, vueViteConfig } from '../vite/vue-app.js'
 import { renderFrom, type Render } from '../render/renderer.js'
+import { viteCorsOptions } from './http/cors.js'
 
 export async function developmentRenderer(
   root: string,
-  project: VueForgeConfig,
+  project: VueforgeConfig,
   server: Server,
   host: string,
   port: number,
 ) {
-  const source = await resolveAppSource(root, project)
+  const sources = await resolveAppSources(root, project)
   const config = project.vite ?? {}
   const hmr = config.server?.hmr
 
   const vite = await createServer({
-    ...vueViteConfig(root, config, source),
+    ...vueViteConfig(root, config, sources, project.document?.rootId),
     appType: 'custom',
     server: {
       ...config.server,
       host,
       port,
       middlewareMode: true,
+      cors: viteCorsOptions(project.server?.cors ?? config.server?.cors),
       hmr:
         hmr === false
           ? false
@@ -43,17 +46,25 @@ export async function developmentRenderer(
   const ssr = vite.environments.ssr
   if (!isRunnableDevEnvironment(ssr)) {
     await vite.close()
-    throw new Error('VueForge could not initialize the Vite SSR runner.')
+    throw new Error('Vueforge could not initialize the Vite SSR runner.')
   }
 
-  const render: Render = async (props, context) => {
+  const render: Render = async (props, context, template) => {
     const entry = await ssr.runner.import<unknown>(serverEntry)
     const renderApp = renderFrom(entry)
-    const { content, teleportHead, modules } = await renderApp(props, context)
+    const { content, teleportHead, modules } = await renderApp(
+      props,
+      context,
+      template,
+    )
     return {
       content,
       teleportHead,
-      assets: await developmentAssets(vite.environments.client, modules),
+      assets: await developmentAssets(
+        vite.environments.client,
+        modules,
+        resolveAssetBase(project.origin, project.base),
+      ),
     }
   }
 

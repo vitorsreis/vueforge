@@ -53,7 +53,7 @@ test('development render errors support HTML and JSON diagnostics', async (t) =>
   assert.equal(html.status, 500)
   assert.match(html.headers.get('content-type'), /^text\/html/)
   const page = await html.text()
-  assert.match(page, /VueForge SSR error/)
+  assert.match(page, /Vueforge SSR error/)
   assert.match(page, /src\/App\.vue:2:10/)
   assert.match(page, /vite:vue/)
   assert.match(page, /Vite frame/)
@@ -107,6 +107,6 @@ test('production render errors remain generic', async (t) => {
   assert.match(response.headers.get('content-type'), /^application\/json/)
   assert.deepEqual(await response.json(), {
     error:
-      'Vue SSR failed. Check the VueForge server log for the component error.',
+      'Vue SSR failed. Check the Vueforge server log for the component error.',
   })
 })

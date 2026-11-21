@@ -73,6 +73,7 @@ function clientMiddleware(
 
 export async function productionRenderer(
   tempDir: string,
+  assetBase = '/',
   load: (
     entry: URL,
   ) => Promise<{ render: AppRender; close?: () => Promise<void> }> = async (
@@ -112,16 +113,22 @@ export async function productionRenderer(
     .filter((chunk) => chunk.file.endsWith('.css'))
     .map((chunk) => ({
       tag: 'link',
-      attrs: { rel: 'stylesheet', href: '/' + chunk.file },
+      attrs: {
+        rel: 'stylesheet',
+        href: publicAssetUrl('/' + chunk.file, assetBase),
+      },
     }))
   assets.push({
     tag: 'script',
-    attrs: { type: 'module', src: '/' + client.file },
+    attrs: {
+      type: 'module',
+      src: publicAssetUrl('/' + client.file, assetBase),
+    },
   })
 
   const { render: renderApp, close } = await load(pathToFileURL(entry))
-  const render: Render = async (props, context) => {
-    const { content, teleportHead } = await renderApp(props, context)
+  const render: Render = async (props, context, template) => {
+    const { content, teleportHead } = await renderApp(props, context, template)
     return { content, teleportHead, assets }
   }
 
@@ -130,4 +137,13 @@ export async function productionRenderer(
     middleware: clientMiddleware(clientPath, new Set(inventory)),
     close,
   }
+}
+
+function publicAssetUrl(path: string, base: string) {
+  if (/^https?:\/\//i.test(base)) {
+    const url = new URL(base)
+    url.pathname = `${url.pathname.replace(/\/$/, '')}${path}`
+    return url.href
+  }
+  return `${base.replace(/\/$/, '')}${path}`
 }

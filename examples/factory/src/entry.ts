@@ -1,9 +1,10 @@
 import { createSSRApp } from 'vue'
+import { createVueforgeApp } from '@vitorsreis/vueforge'
 import App from './App.vue'
 
-export function createApp(context, props) {
+export default createVueforgeApp((context, props) => {
   return createSSRApp(App, {
     ...props,
     name: context?.name,
   })
-}
+})

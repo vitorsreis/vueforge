@@ -8,6 +8,7 @@ export interface CliArguments {
   config?: string
   dev: boolean
   format?: RenderOutputFormat
+  pretty: boolean
   help: boolean
   host?: string
   root?: string
@@ -85,6 +86,7 @@ export function parseCliArguments(args: string[]): CliArguments {
         config: { type: 'string', short: 'c' },
         dev: { type: 'boolean' },
         format: { type: 'string', short: 'f' },
+        pretty: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         host: { type: 'string' },
         root: { type: 'string', short: 'r' },
@@ -130,6 +132,11 @@ export function parseCliArguments(args: string[]): CliArguments {
       'The --format option belongs to the "render" command.',
     )
   }
+  if (parsed.values.pretty && selectedCommand !== 'render') {
+    throw new CliUsageError(
+      'The --pretty option belongs to the "render" command.',
+    )
+  }
 
   if (
     parsed.values['max-request-bytes'] !== undefined &&
@@ -160,6 +167,7 @@ export function parseCliArguments(args: string[]): CliArguments {
   const result: CliArguments = {
     dev: parsed.values.dev ?? false,
     help: parsed.values.help ?? false,
+    pretty: parsed.values.pretty ?? false,
     stdio: parsed.values.stdio ?? false,
     version: parsed.values.version ?? false,
   }

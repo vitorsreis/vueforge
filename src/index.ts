@@ -25,29 +25,49 @@ export interface DocumentOptions {
   head?: HeadEntry[]
 }
 
-interface ProjectOptions {
-  /**
-   * Hostname or IP address used by the HTTP server.
-   *
-   * Defaults to `127.0.0.1`. The `serve --host` option overrides this value
-   * for one invocation.
-   */
+export interface CorsOptions {
+  /** Allowed request origin or origins. */
+  origin?: string | RegExp | (string | RegExp)[]
+  /** Methods advertised for preflight requests. */
+  methods?: string | string[]
+  /** Request headers advertised for preflight requests. */
+  allowedHeaders?: string | string[]
+  /** Response headers exposed to browser clients. */
+  exposedHeaders?: string | string[]
+  /** Allow credentials when an explicit origin is configured. */
+  credentials?: boolean
+  /** Preflight cache lifetime in seconds. */
+  maxAge?: number
+  /** Pass preflight requests to the next middleware. */
+  preflightContinue?: boolean
+  /** Status code returned for handled preflight requests. */
+  optionsSuccessStatus?: number
+}
+
+export interface ServerOptions {
+  /** TCP bind hostname or IP address. */
   host?: string
-  /**
-   * TCP port used by the HTTP server.
-   *
-   * Defaults to `9901`. The `serve --port` option overrides this value for one
-   * invocation.
-   */
+  /** TCP bind port. Defaults to `9901`. */
   port?: number
-  /** Unix domain socket path. Mutually exclusive with the TCP listener. */
+  /** Unix socket path. */
   unix?: string
-  /** TLS certificate files for the HTTP adapter. */
+  /** TLS certificate files for HTTPS. */
   ssl?: { key: string; cert: string; ca?: string }
+  /** CORS policy. Defaults to allowing all origins without credentials. */
+  cors?: boolean | string[] | CorsOptions
   /** Graceful shutdown deadline in milliseconds. */
   shutdownTimeoutMs?: number
+}
+
+interface ProjectOptions {
+  /** HTTP server, transport, TLS and CORS settings. */
+  server?: ServerOptions
   /** Default response representation. */
   format?: 'html' | 'json'
+  /** Absolute HTTP origin used for generated browser assets. */
+  origin?: string
+  /** Public path prefix used for generated browser assets. */
+  base?: string
   /** Defaults used when generating a complete HTML document. */
   document?: DocumentOptions
   /**
@@ -88,7 +108,7 @@ interface ProjectOptions {
   /**
    * Application-specific Vite options.
    *
-   * VueForge merges this object on top of the project's `vite.config.ts`, when
+   * Vueforge merges this object on top of the project's `vite.config.ts`, when
    * present. It supplies the project root, Vue plugin, virtual entrypoints,
    * base URL, and output layout. These options apply to development and both
    * builds.
@@ -96,21 +116,33 @@ interface ProjectOptions {
   vite?: UserConfig
 }
 
-/** Vue component, inline SFC, or project-relative source path. */
-export type VueForgeSource = string | Component
+/** Vue component or inline SFC accepted by `template`. */
+export type VueforgeTemplate = string | Component
+
+/** A request-scoped Vue application factory used by `entry`. */
+export type VueforgeAppFactory<
+  Context = Record<string, unknown>,
+  Props = Record<string, unknown>,
+  App = object,
+> = (context: Context, props: Props) => App | Promise<App>
 
 /**
  * Project settings read from the default export of `vueforge.config.ts`.
  *
- * `source` selects the Vue application source. It accepts an inline SFC, an
- * imported component, a `.vue` component path, or an app factory module path.
+ * `template` selects one Vue component. `entry` selects a module that creates
+ * the Vue app for each request. `templates` selects a named catalog of Vue
+ * components and requires the request body to include `template`.
  *
- * When `source` is omitted, VueForge uses `src/App.vue`.
+ * When all three options are omitted, Vueforge uses `src/App.vue`.
  */
-export type VueForgeConfig = ProjectOptions & { source?: VueForgeSource }
+export type VueforgeConfig = ProjectOptions & {
+  template?: VueforgeTemplate
+  entry?: string
+  templates?: string | Record<string, VueforgeTemplate>
+}
 
 /**
- * Provides type checking and editor completion for a VueForge configuration.
+ * Provides type checking and editor completion for a Vueforge configuration.
  * The CLI applies defaults and command-line overrides when it loads the project.
  * The helper returns the same object without changing it at runtime.
  *
@@ -122,13 +154,39 @@ export type VueForgeConfig = ProjectOptions & { source?: VueForgeSource }
  * import { defineConfig } from '@vitorsreis/vueforge'
  *
  * export default defineConfig({
- *   source: 'src/App.vue',
- *   port: 4300,
+ *   template: 'src/App.vue',
+ *   server: { port: 4300 },
  *   tempDir: '.cache/vueforge',
  *   build: { outDir: 'dist/vueforge' },
  * })
  * ```
  */
-export function defineConfig(config: VueForgeConfig): VueForgeConfig {
+export function defineConfig(config: VueforgeConfig): VueforgeConfig {
   return config
+}
+
+/**
+ * Types a request-scoped Vue app factory without changing its runtime value.
+ *
+ * @param factory - A function that creates a fresh Vue app for one request.
+ * @returns The same factory for use as an entry module export.
+ *
+ * @example
+ * ```ts
+ * import { createSSRApp } from 'vue'
+ * import { createVueforgeApp } from '@vitorsreis/vueforge'
+ *
+ * export default createVueforgeApp((context, props) =>
+ *   createSSRApp(App, { ...props, user: context.user }),
+ * )
+ * ```
+ */
+export function createVueforgeApp<
+  Context = Record<string, unknown>,
+  Props = Record<string, unknown>,
+  App = object,
+>(
+  factory: VueforgeAppFactory<Context, Props, App>,
+): VueforgeAppFactory<Context, Props, App> {
+  return factory
 }

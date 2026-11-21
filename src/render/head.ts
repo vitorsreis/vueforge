@@ -26,13 +26,26 @@ const voidTags = new Set([
 ])
 
 /** Converts top-level Teleport HTML into structured head entries. */
-export function headEntriesFromHtml(html: string): HeadEntry[] {
+export function headEntriesFromHtml(
+  html: string,
+  preserveMarkers = false,
+): HeadEntry[] {
   const fragment = parseFragment(html)
   const entries: HeadEntry[] = []
 
   for (const node of fragment.childNodes) {
     if (defaultTreeAdapter.isTextNode(node)) {
       if (node.value.trim()) entries.push({ html: serializeOuter(node) })
+      continue
+    }
+
+    if (defaultTreeAdapter.isCommentNode(node)) {
+      if (
+        preserveMarkers &&
+        /^teleport(?: start anchor| anchor)$/.test(node.data)
+      ) {
+        entries.push({ html: `<!--${node.data}-->` })
+      }
       continue
     }
 

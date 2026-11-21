@@ -1,5 +1,5 @@
 <script setup>
-defineProps({ title: { type: String, default: 'VueForge' } })
+defineProps({ title: { type: String, default: 'vueforge' } })
 </script>
 
 <template>

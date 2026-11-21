@@ -38,6 +38,8 @@ export interface RenderHandlerOptions extends RenderLimits {
   development?: boolean
   interruptible?: boolean
   root?: string
+  requireTemplate?: boolean
+  templateNames?: readonly string[]
 }
 
 function wantsHtmlError({
@@ -176,7 +178,7 @@ function errorResponse(
     headers: { 'Content-Type': 'application/json; charset=utf-8' },
     body: {
       error:
-        'Vue SSR failed. Check the VueForge server log for the component error.',
+        'Vue SSR failed. Check the Vueforge server log for the component error.',
     },
   })
 }
@@ -198,6 +200,20 @@ export function createRenderHandler(
   ): Promise<RenderHandlerResponse> => {
     try {
       const parsed = parseRenderRequest(request.body)
+      if (options.requireTemplate && parsed.template === undefined) {
+        throw new RenderInputError(
+          '"template" is required when a template catalog is configured.',
+        )
+      }
+      if (
+        parsed.template !== undefined &&
+        options.templateNames !== undefined &&
+        !options.templateNames.includes(parsed.template)
+      ) {
+        throw new RenderInputError(
+          `Unknown template "${parsed.template}". Choose one of: ${options.templateNames.join(', ')}.`,
+        )
+      }
       const explicitFormat = hasExplicitFormat(request.body)
       const format = explicitFormat
         ? undefined
@@ -216,7 +232,11 @@ export function createRenderHandler(
       }
       const input =
         explicitFormat || format === undefined ? parsed : { ...parsed, format }
-      const result = await renderRequest(input.props, input.context)
+      const result = await renderRequest(
+        input.props,
+        input.context,
+        input.template,
+      )
       const formatOptions = {
         ...(document === undefined ? {} : { document }),
         ...(options.development === undefined

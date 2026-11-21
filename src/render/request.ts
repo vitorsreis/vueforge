@@ -5,6 +5,7 @@ export type RenderOutputFormat = 'html' | 'json'
 export interface RenderRequest {
   format: RenderOutputFormat
   hydrate: boolean
+  template?: string
   props?: Record<string, unknown>
   context?: Record<string, unknown>
 }
@@ -27,7 +28,13 @@ export function parseRenderRequest(
     )
   }
 
-  const { props, context, format = defaultFormat, hydrate = false } = value
+  const {
+    props,
+    context,
+    template,
+    format = defaultFormat,
+    hydrate = false,
+  } = value
   if (props !== undefined && !isRecord(props)) {
     throw new RenderInputError(
       '"props" must be a JSON object, for example {"props":{"title":"Hello"}}.',
@@ -38,6 +45,15 @@ export function parseRenderRequest(
     throw new RenderInputError('"context" must be a JSON object.')
   }
 
+  if (
+    template !== undefined &&
+    (typeof template !== 'string' || !template.trim())
+  ) {
+    throw new RenderInputError(
+      '"template" must be a non-empty template name when a template catalog is configured.',
+    )
+  }
+
   if (format !== 'html' && format !== 'json') {
     throw new RenderInputError('"format" must be "html" or "json".')
   }
@@ -45,8 +61,8 @@ export function parseRenderRequest(
   if (typeof hydrate !== 'boolean') {
     throw new RenderInputError('"hydrate" must be a boolean.')
   }
-
   const request: RenderRequest = { format, hydrate }
+  if (template !== undefined) request.template = template
   if (props !== undefined) request.props = props
   if (context !== undefined) request.context = context
   return request

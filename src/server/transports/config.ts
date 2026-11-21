@@ -1,15 +1,16 @@
 import { isAbsolute, resolve } from 'node:path'
 
-import type { VueForgeConfig } from '../../index.js'
+import type { VueforgeConfig } from '../../index.js'
 import { validateTransportSelection, type ServerTransport } from './http.js'
 
 export function listenOptions(
-  config: VueForgeConfig,
+  config: VueforgeConfig,
   host?: string,
   port?: string,
 ) {
-  const resolvedHost = host ?? config.host ?? '127.0.0.1'
-  const resolvedPort = port === undefined ? (config.port ?? 9901) : Number(port)
+  const resolvedHost = host ?? config.server?.host ?? '127.0.0.1'
+  const resolvedPort =
+    port === undefined ? (config.server?.port ?? 9901) : Number(port)
   if (
     typeof resolvedHost !== 'string' ||
     !resolvedHost.trim() ||
@@ -30,7 +31,7 @@ export function listenOptions(
 
 export function resolveServerTransport(
   root: string,
-  config: VueForgeConfig,
+  config: VueforgeConfig,
   overrides: {
     host?: string
     port?: string | number
@@ -38,7 +39,7 @@ export function resolveServerTransport(
     stdio?: boolean
   } = {},
 ): ServerTransport {
-  const unix = overrides.unix ?? config.unix
+  const unix = overrides.unix ?? config.server?.unix
   const stdio = overrides.stdio ?? false
   const listener = listenOptions(
     config,

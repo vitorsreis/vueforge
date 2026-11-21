@@ -72,7 +72,7 @@ async function sample(port, agent, concurrency, count, phase) {
   await Promise.all(
     Array.from({ length: concurrency }, async (_, worker) => {
       for (let index = worker; index < count; index += concurrency) {
-        const title = `VueForge ${concurrency} ${phase} ${index + 1}`
+        const title = `Vueforge ${concurrency} ${phase} ${index + 1}`
         timings.push(await render(port, agent, title, deadline))
       }
     }),
@@ -136,7 +136,7 @@ try {
   try {
     const origin = `http://${host}:${port}`
     const deadline = Date.now() + 15000
-    while (!log.includes(`VueForge listening on ${origin}`)) {
+    while (!log.includes(`Vueforge listening on ${origin}`)) {
       assert.ok(
         child.pid && child.exitCode === null && Date.now() < deadline,
         'Production server startup failed.\n' + log,
