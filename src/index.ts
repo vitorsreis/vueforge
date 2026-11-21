@@ -14,7 +14,6 @@ export {
   type VueforgeRenderResponse,
   type VueforgeRendererConfig,
   type VueforgeRenderer,
-  type VueforgeRendererMode,
   type VueforgeRendererOptions,
 } from './renderer.js'
 
@@ -69,11 +68,40 @@ export interface ServerOptions {
   /** Unix socket path. */
   unix?: string
   /** TLS certificate files for HTTPS. */
-  ssl?: { key: string; cert: string; ca?: string }
+  ssl?: VueforgeSslOptions
   /** CORS policy. Defaults to allowing all origins without credentials. */
   cors?: boolean | string[] | CorsOptions
   /** Graceful shutdown deadline in milliseconds. */
   shutdownTimeoutMs?: number
+}
+
+export interface VueforgeSslOptions {
+  /** TLS private key file. */
+  key: string
+  /** TLS certificate file. */
+  cert: string
+  /** Optional certificate authority bundle. */
+  ca?: string
+}
+
+export interface VueforgeLimits {
+  /** Maximum request body size in bytes. */
+  maxRequestBytes?: number
+  /** Maximum number of concurrent SSR renders. */
+  maxConcurrentRenders?: number
+  /** Maximum time allowed for one SSR render in milliseconds. */
+  renderTimeoutMs?: number
+  /** Maximum rendered HTML size in bytes. */
+  maxOutputBytes?: number
+}
+
+export interface VueforgeBuildOptions {
+  /** Final client and server artifact directory. */
+  outDir?: string
+  /** Emit source maps. */
+  sourcemap?: boolean
+  /** Enable output minification. */
+  minify?: boolean
 }
 
 interface ProjectOptions {
@@ -103,27 +131,11 @@ interface ProjectOptions {
   /**
    * SSR resource limits applied by persistent server transports.
    */
-  limits?: {
-    /** Maximum request body size in bytes. */
-    maxRequestBytes?: number
-    /** Maximum number of concurrent SSR renders. */
-    maxConcurrentRenders?: number
-    /** Maximum time allowed for one SSR render in milliseconds. */
-    renderTimeoutMs?: number
-    /** Maximum rendered HTML size in bytes. */
-    maxOutputBytes?: number
-  }
+  limits?: VueforgeLimits
   /**
    * Build output and optimization options.
    */
-  build?: {
-    /** Final client and server artifact directory. */
-    outDir?: string
-    /** Emit source maps. */
-    sourcemap?: boolean
-    /** Enable output minification. */
-    minify?: boolean
-  }
+  build?: VueforgeBuildOptions
   /**
    * Application-specific Vite options.
    *

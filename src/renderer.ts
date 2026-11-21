@@ -1,5 +1,7 @@
 import { resolve } from 'node:path'
 
+import { renderToString } from 'vue/server-renderer'
+
 import {
   loadProjectConfig,
   resolveMode,
@@ -8,16 +10,18 @@ import {
   resolveBuildOutputDir,
   resolveRenderLimits,
 } from './config.js'
-import type { HeadEntry, VueforgeConfig, VueforgeMode } from './index.js'
+import type {
+  HeadEntry,
+  VueforgeAppFactory,
+  VueforgeConfig,
+  VueforgeMode,
+} from './index.js'
 import { createRenderHandler } from './server/render/handler.js'
 import { createRenderHandlerOptions } from './server/render/handler-options.js'
 import { developmentRenderer } from './server/development.js'
 import { productionRenderer } from './server/production/renderer.js'
 import { productionWorkerRenderer } from './server/production/worker-renderer.js'
 import type { RenderOutputFormat } from './render/request.js'
-
-/** Runtime mode used by a public Vueforge renderer. */
-export type VueforgeRendererMode = VueforgeMode
 
 /** Vueforge configuration accepted by a framework-neutral renderer. */
 export type VueforgeRendererConfig = Omit<VueforgeConfig, 'server' | 'tempDir'>
@@ -83,7 +87,7 @@ export interface VueforgeRenderResponse {
 
 /** Public renderer lifecycle and render operation. */
 export interface VueforgeRenderer {
-  readonly mode: VueforgeRendererMode
+  readonly mode: VueforgeMode
   readonly root: string
   render(request: VueforgeRenderRequest): Promise<VueforgeRenderResponse>
   close(): Promise<void>
@@ -96,7 +100,7 @@ export interface VueforgeRenderer {
  * process adapter can map its `status`, `headers`, and `body` to its own
  * response type. Each call receives a complete request context and may select
  * a named catalog template. The renderer can load a project configuration
- * file or use an inline configuration object.
+ * file or use configuration fields directly in `options`.
  *
  * @param options - Project and runtime options.
  * @returns A renderer that must be closed when the host process shuts down.
@@ -130,6 +134,7 @@ export async function createVueforgeRenderer(
     configFile,
     undefined,
     configFile === undefined ? inlineConfig : undefined,
+    options.mode,
   )
   const config: VueforgeConfig =
     configFile === undefined
@@ -138,19 +143,57 @@ export async function createVueforgeRenderer(
   const mode = resolveMode(options.mode ?? config.mode)
   const root = resolve(config.root ?? requestedRoot)
   const limits = resolveRenderLimits(config)
+  const directMain =
+    typeof options.main === 'function'
+      ? (options.main as VueforgeAppFactory)
+      : undefined
   const sources =
-    mode === 'development' || config.main !== undefined
+    directMain === undefined &&
+    (mode === 'development' || config.main !== undefined)
       ? await resolveAppSources(root, config)
       : undefined
 
   const service =
-    mode === 'development'
-      ? await developmentRenderer(root, config)
-      : await productionRenderer(
-          resolveBuildOutputDir(root, config.build?.outDir),
-          resolveAssetBase(config.origin, config.base),
-          (entry) => productionWorkerRenderer(entry, limits),
-        )
+    directMain !== undefined
+      ? {
+          render: async (context: Record<string, unknown> = {}) => {
+            const result = await directMain(context)
+            const app = 'app' in result ? result.app : result
+            if (
+              typeof app !== 'object' ||
+              app === null ||
+              !('mount' in app) ||
+              typeof app.mount !== 'function' ||
+              !('config' in app) ||
+              typeof app.config !== 'object' ||
+              app.config === null
+            ) {
+              throw new Error(
+                'The Vueforge main factory must return a Vue application or an object containing app.',
+              )
+            }
+            const appConfig = app.config as {
+              throwUnhandledErrorInProduction?: boolean
+            }
+            appConfig.throwUnhandledErrorInProduction = true
+            const ssr = {} as { teleports?: Record<string, string> }
+            const content = await renderToString(app as never, ssr)
+            return {
+              content,
+              teleportHead: ssr.teleports?.head ?? '',
+              context,
+              assets: [],
+            }
+          },
+          close: () => undefined,
+        }
+      : mode === 'development'
+        ? await developmentRenderer(root, config)
+        : await productionRenderer(
+            resolveBuildOutputDir(root, config.build?.outDir),
+            resolveAssetBase(config.origin, config.base),
+            (entry) => productionWorkerRenderer(entry, limits),
+          )
 
   const handleRender = createRenderHandler(
     service.render,

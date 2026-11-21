@@ -7,6 +7,7 @@ import { fileURLToPath, URL } from 'node:url'
 import { buildProject } from '../dist/build.js'
 import { loadProjectConfig, resolveTempDir } from '../dist/config.js'
 import { createVueforgeRenderer } from '../dist/index.js'
+import { createSSRApp } from 'vue'
 
 const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
 
@@ -78,6 +79,31 @@ test('public renderer accepts config-shaped options and ignores the project conf
       { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
     ],
     content: '<h1>Inline config</h1>',
+  })
+})
+
+test('public renderer accepts a direct main factory', async (t) => {
+  const renderer = await createVueforgeRenderer({
+    mode: 'development',
+    main: (context) =>
+      createSSRApp(
+        {
+          props: ['title'],
+          template: '<h1>{{ title }}</h1>',
+        },
+        context.props,
+      ),
+  })
+  t.after(() => renderer.close())
+
+  const response = await renderer.render({
+    context: { props: { title: 'Direct' } },
+    format: 'json',
+  })
+  assert.equal(response.status, 200)
+  assert.deepEqual(response.body, {
+    head: [],
+    content: '<h1>Direct</h1>',
   })
 })
 
