@@ -164,9 +164,7 @@ export type VueforgeMain<Context extends VueforgeContext = VueforgeContext> =
  *
  * When `main` is omitted, Vueforge uses `src/App.vue`.
  */
-export type VueforgeConfig<
-  Context extends VueforgeContext = VueforgeContext,
-> = ProjectOptions & { main?: VueforgeMain<Context> }
+export type VueforgeConfig = ProjectOptions & { main?: VueforgeMain }
 
 /**
  * Provides type checking and editor completion for a Vueforge configuration.
@@ -188,12 +186,12 @@ export type VueforgeConfig<
  * })
  * ```
  */
-export function defineConfig<
-  Context extends VueforgeContext = VueforgeContext,
-  App = object,
->(
-  config: ProjectOptions & { main: VueforgeAppFactory<Context, App> },
-): VueforgeConfig<Context>
+/** Keeps contextual typing for inline request-scoped handlers. */
+export function defineConfig(
+  config: ProjectOptions & { main: VueforgeAppFactory },
+): VueforgeConfig
+// The overloads intentionally preserve contextual typing for direct handlers.
+// eslint-disable-next-line @typescript-eslint/unified-signatures
 export function defineConfig(config: VueforgeConfig): VueforgeConfig
 export function defineConfig(config: VueforgeConfig): VueforgeConfig {
   return config
