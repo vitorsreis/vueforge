@@ -31,7 +31,7 @@ function componentFile(value: Component): string | undefined {
 }
 
 function isInlineSfc(value: string) {
-  return /^\s*<(?:template|script|style)(?:\s|>)/.test(value)
+  return /^\s*<(?:template|script|style)[\s>]/.test(value)
 }
 
 function isFactory(value: unknown): value is VueforgeAppFactory {

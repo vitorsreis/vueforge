@@ -5,6 +5,7 @@ import {
   serializeOuter,
 } from 'parse5'
 import type { HeadEntry } from '../index.js'
+
 export type { HeadEntry } from '../index.js'
 export type { HeadTag } from '../index.js'
 
