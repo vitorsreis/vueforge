@@ -51,7 +51,7 @@ curl --json '{"props":{"title":"Hello"}}' http://127.0.0.1:9901/render
 The response is:
 
 ```json
-{ "head": "", "content": "<h1>Hello</h1>" }
+{ "head": [], "content": "<h1>Hello</h1>" }
 ```
 
 Edit `src/App.vue` while the server is running. Vite reloads the SSR module and browser HMR updates hydrated pages.
@@ -65,7 +65,7 @@ npx vueforge build
 npx vueforge serve
 ```
 
-The default build directory is `.vueforge`. Build and serve must use the same project root and `tempDir` setting. Restart the production process after creating a new build.
+The default temporary directory is `.vueforge`; `build.outDir` controls the final output directory and defaults to `dist`. Build, serve, and render must use the same project `root` and `build.outDir` settings. Restart the production process after creating a new build.
 
 For a single render without opening an HTTP listener, send one JSON request to standard input:
 
@@ -83,16 +83,16 @@ printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render --format html
 
 ## Commands
 
-| Command                | Description                                                |
-| ---------------------- | ---------------------------------------------------------- |
-| `vueforge serve --dev` | Start development SSR, Vite middleware, and HMR.           |
-| `vueforge build`       | Create the browser and server artifacts under `.vueforge`. |
-| `vueforge serve`       | Start the production HTTP server from a completed build.   |
-| `vueforge render`      | Render one production request from standard input.         |
-| `vueforge --help`      | Print command usage.                                       |
-| `vueforge --version`   | Print the installed package version.                       |
+| Command                | Description                                              |
+| ---------------------- | -------------------------------------------------------- |
+| `vueforge serve --dev` | Start development SSR, Vite middleware, and HMR.         |
+| `vueforge build`       | Create the browser and server artifacts under `dist`.    |
+| `vueforge serve`       | Start the production HTTP server from a completed build. |
+| `vueforge render`      | Render one production request from standard input.       |
+| `vueforge --help`      | Print command usage.                                     |
+| `vueforge --version`   | Print the installed package version.                     |
 
-Use `--host` and `--port` with `serve` to override the configuration for one run.
+Use `--root`, `--host`, `--port`, `--unix`, or `--stdio` with `serve` to override the configuration for one run. TLS and resource-limit options are also available.
 Use `--config <path>` with any command to select a JavaScript or TypeScript
 VueForge configuration file. Run `vueforge <command> --help` for command-specific
 options.
@@ -105,10 +105,11 @@ No configuration file is required for `src/App.vue`, `127.0.0.1`, port `9901`, a
 import { defineConfig } from '@vitorsreis/vueforge'
 
 export default defineConfig({
-  file: 'src/pages/Home.vue',
+  entry: 'src/pages/Home.vue',
   host: '127.0.0.1',
   port: 9901,
   tempDir: '.vueforge',
+  build: { outDir: 'dist' },
 })
 ```
 
@@ -122,7 +123,7 @@ The service exposes:
 - `GET /healthz` for a no-store liveness response
 - `POST /render` for SSR output
 
-The caller owns the document. Put `head` in `<head>` and `content` inside the element that will contain the Vue app. See [HTTP API](docs/http-api.md) for request validation, hydration, styles, Teleport, and error handling.
+With JSON output, the caller owns the document and puts `head` in `<head>` and `content` inside the Vue root. HTML output is a complete document controlled by `document` options. See [HTTP API](docs/http-api.md) for request validation, Accept negotiation, hydration, styles, Teleport, and error handling.
 
 ## Documentation
 

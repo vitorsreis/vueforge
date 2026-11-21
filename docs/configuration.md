@@ -1,22 +1,23 @@
 # CLI and configuration
 
-VueForge uses the current working directory as the project root. A project with `src/App.vue` works without a configuration file.
+VueForge resolves a project from `root`. The CLI defaults `root` to the current working directory. A project containing `src/App.vue` needs no source setting.
 
 ## Commands
 
 | Command                | Description                                                 |
 | ---------------------- | ----------------------------------------------------------- |
+| `vueforge serve`       | Start the HTTP renderer.                                    |
 | `vueforge serve --dev` | Start development SSR with Vite middleware and browser HMR. |
 | `vueforge build`       | Build the browser and server artifacts.                     |
-| `vueforge serve`       | Start the production HTTP server from the artifacts.        |
 | `vueforge render`      | Render one production request from standard input.          |
 | `vueforge --help`      | Print command usage.                                        |
 | `vueforge --version`   | Print the installed package version.                        |
 
-All commands accept `--config <path>` or `-c <path>`. Relative paths resolve from
-the project root, and the file must use `.js`, `.mjs`, `.cjs`, `.ts`, `.mts`, or
-`.cts`. `serve` accepts `--dev`, `--host <host>`, and `--port <port>`. Command-line
-values override the configuration file for that run.
+Global options include `--root <path>`, `--config <path>`, `--help`, and
+`--version`. `serve` also accepts `--host`, `--port`, `--unix`, `--stdio`, TLS
+file options, and resource-limit options. `render` accepts `--format json|html`
+and resource-limit options. Command-line values take precedence over the
+configuration file.
 
 Use `vueforge --help` for global options and `vueforge <command> --help` for the
 options and input contract of one command.
@@ -50,29 +51,53 @@ export default defineConfig({
 
 ### Options
 
-| Option     | Default           | Description                                                                                        |
-| ---------- | ----------------- | -------------------------------------------------------------------------------------------------- |
-| `host`     | `127.0.0.1`       | Hostname or IP address used by `serve`.                                                            |
-| `port`     | `9901`            | TCP port from `1` through `65535`.                                                                 |
-| `tempDir`  | `.vueforge`       | Directory for generated client and server artifacts. Relative paths resolve from the project root. |
-| `vite`     | VueForge defaults | Vite options applied to development and production builds.                                         |
-| `file`     | `src/App.vue`     | Project-relative `.vue` file used as the root component.                                           |
-| `template` | None              | Inline Vue SFC source used as the root component.                                                  |
-| `entry`    | None              | Project-relative module that creates a Vue app for each request.                                   |
+| Option     | Default              | Description                                                                     |
+| ---------- | -------------------- | ------------------------------------------------------------------------------- |
+| `host`     | `127.0.0.1`          | Hostname or IP address used by `serve`.                                         |
+| `port`     | `9901`               | TCP port from `1` through `65535`.                                              |
+| `tempDir`  | `.vueforge`          | Temporary staging and lock directory. Relative paths resolve from `root`.       |
+| `root`     | current directory    | Project root used to resolve source, config, and artifacts.                     |
+| `unix`     | None                 | Unix socket path. It cannot be combined with `host` or `port`.                  |
+| `ssl`      | None                 | TLS settings for TCP serving. Requires `cert` and `key`, with optional `ca`.    |
+| `build`    | `{ outDir: 'dist' }` | Final output directory and Vite `sourcemap`/`minify` options.                   |
+| `limits`   | See below            | Request, concurrency, timeout, and output-size limits.                          |
+| `document` | See below            | Complete HTML document options used by `format: "html"`.                        |
+| `vite`     | VueForge defaults    | Vite options applied to development and production builds.                      |
+| `template` | None                 | Inline Vue SFC source or imported Vue component.                                |
+| `entry`    | None                 | Project-relative `.vue` component or module that creates a Vue app per request. |
 
-`file`, `template`, and `entry` are mutually exclusive. Omit all three to use `src/App.vue`.
+Omit `template` and `entry` to use `src/App.vue`. Set exactly one when overriding the default.
+
+TCP is the default HTTP transport. `--stdio` is a CLI-only newline-delimited
+JSON transport and cannot be combined with `--unix`.
+
+`limits` defaults to `maxRequestBytes: 65536`, `maxConcurrentRenders: 4`,
+`renderTimeoutMs: 5000`, and `maxOutputBytes: 4194304`.
+
+`document` defaults to `doctype: "<!doctype html>"`, `rootId: "app"`, empty
+`htmlAttrs`, empty `bodyAttrs`, and an empty `head` list. `head` entries are
+emitted before render-generated head entries.
 
 ## Choosing a source
 
-### Vue file
+### Vue component
 
 ```ts
 export default defineConfig({
-  file: 'src/pages/Home.vue',
+  entry: 'src/pages/Home.vue',
 })
 ```
 
-The file must be inside the project and use the `.vue` extension. VueForge passes declared root props to the component. Request `context` is available through a declared `context` prop and takes precedence over `props.context`.
+You can also import a Vue single-file component into the config and supply it as `template`.
+
+```ts
+import { defineConfig } from '@vitorsreis/vueforge'
+import Home from './src/pages/Home.vue'
+
+export default defineConfig({ template: Home })
+```
+
+The component must come from a `.vue` file inside the project. VueForge passes declared root props to the component. Request `context` is available through a declared `context` prop and takes precedence over `props.context`.
 
 ### Inline SFC
 
@@ -99,8 +124,11 @@ Use `entry` when the project already has a Vue app factory, router, store, or ot
 import { createSSRApp } from 'vue'
 import App from './App.vue'
 
-export function createApp(context, props) {
-  const app = createSSRApp(App)
+export function createApp(
+  context: Record<string, unknown> | undefined,
+  props: Record<string, unknown>,
+) {
+  const app = createSSRApp(App, props)
   app.provide('requestContext', context)
   return app
 }
@@ -113,7 +141,7 @@ import { defineConfig } from '@vitorsreis/vueforge'
 export default defineConfig({ entry: 'src/entry.ts' })
 ```
 
-VueForge calls the factory once for every server render and once during browser hydration. It passes `(context, props)`, where `context` is the request's optional object and `props` is the request's optional object. The factory may be asynchronous and may return the Vue app directly or an object containing `app`.
+VueForge calls the factory once for every server render and once during browser hydration. It passes `(context, props)`. `context` is `undefined` when omitted and `props` defaults to `{}`. The factory may be asynchronous and may return the Vue app directly or an object containing `app`.
 
 Use an entry factory to decide exactly which request values reach the app. When hydration is enabled, values included in the request are public to the browser.
 
@@ -152,10 +180,10 @@ VueForge controls the project root, base URL, Vue plugin, virtual client and ser
 
 ## Build artifacts
 
-`vueforge build` writes this layout by default:
+`vueforge build` writes this layout under `build.outDir`, which defaults to `dist`:
 
 ```text
-.vueforge/
+dist/
   client/
     .vite/manifest.json
     .vite/vueforge-assets.json
@@ -164,7 +192,7 @@ VueForge controls the project root, base URL, Vue plugin, virtual client and ser
     entry.mjs
 ```
 
-Use the same `tempDir` with `build`, `serve`, and `render`. Deploy both directories together. A production server must be restarted after a new build.
+`tempDir` is used only while building. Use the same `build.outDir` with `build`, `serve`, and `render`. Deploy both directories together. A production server must be restarted after a new build.
 
 ## Rendering from standard input
 
@@ -189,6 +217,6 @@ Diagnostics are written to standard error. With an interactive terminal as stand
 ## Common errors
 
 - `VueForge expects src/App.vue...` means the command was run from a directory without the default source.
-- `choose only one of file, template, or entry` means more than one source option is configured.
-- `Build artifacts are missing` means `vueforge build` has not run or the commands use different `tempDir` values.
+- `choose only one of entry or template` means more than one source option is configured.
+- `Build artifacts are missing` means `vueforge build` has not run or the commands use different `build.outDir` values.
 - `Address already in use` means another process owns the selected port.

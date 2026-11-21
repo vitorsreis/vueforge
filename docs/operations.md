@@ -14,14 +14,14 @@ When a module fails during HMR, VueForge displays its own error overlay with the
 
 ## Production lifecycle
 
-Build once, then run the server from the same project root:
+Build once, then run the server from the same project root and `build.outDir`:
 
 ```sh
 npx vueforge build
 npx vueforge serve
 ```
 
-The build creates the client and server outputs under `tempDir`, which defaults to `.vueforge`. A production process loads the server entry at startup. Restart it after a new build.
+The build uses `.vueforge` for temporary staging and creates client and server artifacts under `build.outDir`, which defaults to `dist`. A production process loads the server entry at startup. Restart it after a new build.
 
 `vueforge render` is the one-shot production path for jobs, tests, and backends that prefer standard input:
 
@@ -41,6 +41,13 @@ Each render creates a new Vue app. Vite modules and compiled production code are
 
 VueForge does not cache rendered HTML. Add caching in the backend only when the document is safe to reuse. Include every render input in the cache key.
 
+## Transports
+
+TCP is the default persistent transport. Use `--unix <path>` or `unix` in the
+configuration for a Unix socket. Use `--stdio` for newline-delimited JSON on the
+CLI. Stdio cannot be combined with a Unix socket. Configure `ssl: { cert, key,
+ca? }` for TLS on TCP.
+
 ## Limits
 
 - JSON request body: 64 KiB
@@ -48,17 +55,17 @@ VueForge does not cache rendered HTML. Add caching in the backend only when the 
 - Production deadline: five seconds
 - Production transferred render output: 4 MiB
 
-A busy production server returns `503` with `Retry-After: 1`. A render that reaches the deadline returns `504`. Development renders use Vite's runner and can still be blocked by synchronous project code.
+A busy production server returns `503` with `Retry-After: 1`. A render that reaches the deadline returns `504`. Development renders use Vite's runner and can still be blocked by synchronous project code. Override these values with `limits` or command-line limit options.
 
 ## Troubleshooting
 
 ### Build artifacts are missing
 
-Run `vueforge build` and confirm that `tempDir` is the same for build and serve. Deploy both `<tempDir>/client` and `<tempDir>/server` from that build.
+Run `vueforge build` and confirm that `build.outDir` is the same for build and serve. Deploy both `<build.outDir>/client` and `<build.outDir>/server` from that build.
 
 ### The browser cannot load styles or scripts
 
-Check that the asset URLs returned in `head` resolve from the page origin. In development, proxy Vite module requests and the HMR WebSocket. In production, serve or proxy `<tempDir>/client`.
+Check that the asset URLs returned in `head` resolve from the page origin. In development, proxy Vite module requests and the HMR WebSocket. In production, serve or proxy `<build.outDir>/client`.
 
 ### Hydration warnings appear
 

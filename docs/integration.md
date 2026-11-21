@@ -13,7 +13,7 @@ Send the data required by the configured Vue source to `POST /render`:
 }
 ```
 
-Use `format: "html"` when the backend can insert the returned `head` string directly. Use `format: "json"` when the backend has its own HTML element builder.
+Use `format: "html"` when the backend wants VueForge to return the complete document. Use `format: "json"` when the backend composes the document itself. When `format` is omitted, the server negotiates with `Accept`, then configuration, then defaults to JSON.
 
 The caller composes the response document:
 
@@ -25,7 +25,7 @@ backend route
   -> return the document
 ```
 
-VueForge does not add a document wrapper and does not know which backend URL produced the request.
+The JSON response is fragment-oriented. The HTML response uses the configured `document` options for doctype, root id, attributes, and extra head entries.
 
 ## Hydrate in the browser
 
@@ -60,19 +60,19 @@ The proxy must preserve the WebSocket upgrade. Keep VueForge on a private interf
 
 ## Production assets
 
-Run `vueforge build` before starting production. The response's stylesheet and browser entry URLs are root-relative, so the browser must be able to request those paths from the page origin.
+Run `vueforge build` before starting production. The response's stylesheet and browser entry URLs are root-relative, so the browser must be able to request those paths from the page origin. `tempDir` stores temporary build state and `build.outDir` selects the final output directory.
 
 Choose one of these deployment arrangements:
 
-1. Serve the `<tempDir>/client` directory from the backend's static file handler.
+1. Serve the `<build.outDir>/client` directory from the backend's static file handler.
 2. Proxy asset requests from the backend origin to the VueForge production server.
-3. Put both services behind a reverse proxy that maps the same public asset paths to `<tempDir>/client`.
+3. Put both services behind a reverse proxy that maps the same public asset paths to `<build.outDir>/client`.
 
-Deploy `<tempDir>/client` and `<tempDir>/server` from the same build. Keep `tempDir` identical for `build`, `serve`, and `render`.
+Deploy `<build.outDir>/client` and `<build.outDir>/server` from the same build. Keep `build.outDir` identical for `build`, `serve`, and `render`.
 
 ## Request data and app factories
 
-For a configured file or template, declare the props that the root component accepts. The request `context` is available through a declared `context` prop.
+For a configured component or inline template, declare the props that the root component accepts. The request `context` is available through a declared `context` prop.
 
 For a configured `entry`, VueForge calls `createApp(context, props)` for every render. Use the factory to create request-scoped router and store instances and to select the data that enters the app.
 

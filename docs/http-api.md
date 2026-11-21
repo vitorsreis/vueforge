@@ -1,6 +1,6 @@
 # HTTP API
 
-VueForge exposes an HTTP service in both development and production. The default origin is `http://127.0.0.1:9901`.
+VueForge exposes an HTTP service in both development and production. The default origin is `http://127.0.0.1:9901`. HTTP can use TCP or a configured Unix socket. `--stdio` is a CLI-only newline-delimited JSON protocol.
 
 The backend owns application routes and the final HTML document. VueForge returns render fragments and never chooses a URL for the backend.
 
@@ -8,12 +8,12 @@ The backend owns application routes and the final HTML document. VueForge return
 
 Send one JSON object with `Content-Type: application/json`. The request body is limited to 64 KiB. Every field is optional.
 
-| Field     | Type                 | Default  | Description                                                                                      |
-| --------- | -------------------- | -------- | ------------------------------------------------------------------------------------------------ |
-| `props`   | object               | `{}`     | Props for the configured Vue source.                                                             |
-| `context` | object               | omitted  | Per-request data for an `entry` factory or the root `context` prop of a file or template source. |
-| `format`  | `"html"` or `"json"` | `"html"` | Representation of the `head` field in the response.                                              |
-| `hydrate` | boolean              | `false`  | Include browser assets and serialized request data for hydration.                                |
+| Field     | Type                 | Default | Description                                                                                      |
+| --------- | -------------------- | ------- | ------------------------------------------------------------------------------------------------ |
+| `props`   | object               | `{}`    | Props for the configured Vue source.                                                             |
+| `context` | object               | omitted | Per-request data for an `entry` factory or the root `context` prop of a file or template source. |
+| `format`  | `"html"` or `"json"` | omitted | Requested response representation.                                                               |
+| `hydrate` | boolean              | `false` | Include browser assets and serialized request data for hydration.                                |
 
 Example request:
 
@@ -25,7 +25,7 @@ Example request:
 }
 ```
 
-The source is selected in `vueforge.config.ts`, never in the request body. File and template sources receive only props declared by the root component. An `entry` factory receives the complete `context` and `props` objects and decides what to use.
+The source is selected in `vueforge.config.ts`, never in the request body. Component and template sources receive only props declared by the root component. An `entry` factory receives the complete `context` and `props` objects and decides what to use.
 
 With `hydrate: true`, all submitted `props` and `context` values are public because VueForge embeds them in the page. Use the same values when the backend composes the server-rendered page and when the browser hydrates it.
 
@@ -44,16 +44,21 @@ A successful response has this shape:
 
 `head` contains stylesheet tags, the browser entry when hydration is enabled, and markup sent to Vue's native `<Teleport to="head">`. Insert it inside the document's `<head>`.
 
-With `format: "html"`, `head` is an HTML string:
+With `format: "html"`, the response body is a complete HTML document using the configured `document` options:
 
-```json
-{
-  "head": "<link rel=\"stylesheet\" href=\"/assets/app.css\">",
-  "content": "<h1>Hello</h1>"
-}
+```html
+<!doctype html>
+<html>
+  <head>
+    <link rel="stylesheet" href="/assets/app.css" />
+  </head>
+  <body>
+    <div id="app"><h1>Hello</h1></div>
+  </body>
+</html>
 ```
 
-With `format: "json"`, `head` is an ordered array. Generated entries have `tag`, `attrs`, and optional `content`. Teleported head content is represented as `{ "html": "..." }`.
+With `format: "json"`, `head` is an ordered array. Generated entries have `tag`, `attrs`, and optional `content`. Complex Teleport output is represented as `{ "html": "..." }`.
 
 ```json
 {
@@ -71,6 +76,17 @@ With `format: "json"`, `head` is an ordered array. Generated entries have `tag`,
 ```
 
 Treat generated head entries and content as output from the trusted Vue project. Escape or sanitize values before putting untrusted data into component props.
+
+### Format negotiation
+
+The server selects the response format in this order:
+
+1. `format` in the request body.
+2. The highest-quality supported media type in `Accept`.
+3. `format` from configuration.
+4. `json`.
+
+Supported media types are `application/json` and `text/html`. A `format: "html"` request returns the complete document. A `format: "json"` request returns the envelope.
 
 ### Hydration
 
