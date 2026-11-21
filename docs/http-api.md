@@ -31,18 +31,18 @@ With `hydrate: true`, all submitted `props` and `context` values are public beca
 
 ### Response
 
-A successful response has this shape:
+A successful JSON response has this shape:
 
 ```json
 {
-  "head": "",
+  "head": [],
   "content": "<h1>Hello</h1>"
 }
 ```
 
 `content` is the rendered HTML fragment. Insert it inside the element that will contain the Vue app, usually `<div id="app">`.
 
-`head` contains stylesheet tags, the browser entry when hydration is enabled, and markup sent to Vue's native `<Teleport to="head">`. Insert it inside the document's `<head>`.
+`head` contains an ordered list of stylesheet tags, the browser entry when hydration is enabled, and markup sent to Vue's native `<Teleport to="head">`. Insert it inside the document's `<head>`.
 
 With `format: "html"`, the response body is a complete HTML document using the configured `document` options:
 
