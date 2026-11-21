@@ -76,9 +76,10 @@ import { createSSRApp } from 'vue'
 import { createVueforgeApp } from '@vitorsreis/vueforge'
 import App from './App.vue'
 
-export default createVueforgeApp((context) => {
+export default createVueforgeApp((context, runtime) => {
   const app = createSSRApp(App, context.props)
   app.provide('requestContext', context)
+  app.provide('vueforgeRuntime', runtime)
   return app
 })
 ```
@@ -90,6 +91,19 @@ export default { main: 'src/entry.ts' }
 
 Use a factory for request-scoped routers, stores, and plugins. Do not keep
 request data in module-level mutable state.
+
+During development, a factory defined directly in `vueforge.config.ts` is
+revalidated when its configuration file changes. Editing the factory is
+therefore picked up without restarting the server. If an edit is
+temporarily invalid, Vueforge keeps the last valid module until the file is
+fixed. Changes to server transport, TLS, port, or other process-level options
+still require a restart.
+
+Factory changes can alter the server-rendered HTML and hydration contract, so
+the browser receives a full reload. Vue component and style edits continue to
+use Vue and Vite HMR. Changes to `main` source shape, Vite plugins or aliases,
+`vite.server`, build output, `root`, or the development/production mode require
+a process restart. Transport and TLS changes are never applied partially.
 
 ### Template catalogs
 

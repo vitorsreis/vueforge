@@ -208,6 +208,80 @@ for (const { name, config, files, content } of [
   )
 }
 
+test(
+  'reloads a config factory after it changes during development',
+  { timeout: 60000 },
+  async (t) => {
+    const factory = (title) => `
+import { createSSRApp, h } from 'vue'
+
+export default {
+  main: () => createSSRApp({ render: () => h('h1', ${JSON.stringify(title)}) }),
+}
+`
+    const configFile = 'vueforge.config.ts'
+    const cwd = await project(t, {}, { [configFile]: factory('first') })
+
+    await serve(cwd, async (post) => {
+      const initial = await post({})
+      assert.equal(initial.status, 200, await initial.clone().text())
+      assert.equal((await initial.json()).content, '<h1>first</h1>')
+
+      await writeFile(join(cwd, configFile), 'export default { main: () => {')
+      await delay(250)
+      const broken = await post({})
+      assert.equal(broken.status, 200, await broken.clone().text())
+      assert.equal((await broken.json()).content, '<h1>first</h1>')
+
+      await writeFile(join(cwd, configFile), factory('second'))
+
+      const deadline = Date.now() + 10000
+      for (;;) {
+        const response = await post({})
+        if (response.status === 200) {
+          const result = await response.json()
+          if (result.content === '<h1>second</h1>') return
+        }
+        assert.ok(Date.now() < deadline, 'config factory did not reload')
+        await delay(50)
+      }
+    })
+  },
+)
+
+test('passes the runtime target and mode to configured factories', async (t) => {
+  const cwd = await project(
+    t,
+    {},
+    {
+      'vueforge.config.ts': `
+import { createSSRApp, h } from 'vue'
+
+export default {
+  main: (_context, runtime) => createSSRApp({
+    render: () => h('h1', runtime.target + ':' + runtime.mode),
+  }),
+}
+`,
+    },
+  )
+
+  await serve(cwd, async (post) => {
+    const response = await post({})
+    assert.equal(response.status, 200, await response.clone().text())
+    assert.equal((await response.json()).content, '<h1>server:development</h1>')
+  })
+
+  const build = run(cwd, 'build')
+  assert.equal(build.status, 0, build.stderr)
+  const rendered = run(cwd, 'render', {})
+  assert.equal(rendered.status, 0, rendered.stderr)
+  assert.equal(
+    JSON.parse(rendered.stdout).content,
+    '<h1>server:production</h1>',
+  )
+})
+
 test('validates configured render sources before building', async (t) => {
   const cwd = await project(t, {})
   for (const [config, expected] of [

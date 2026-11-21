@@ -84,15 +84,20 @@ Deploy `<build.outDir>/client` and `<build.outDir>/server` from the same build. 
 
 For a configured component or inline SFC, declare the props that the root component accepts. Vueforge forwards `context.props` to those props.
 
-For a configured factory module path in `main`, Vueforge calls `createApp(context)` for every render. Use the factory to create request-scoped router and store instances and to select the data that enters the app.
+For a configured factory module path in `main`, Vueforge calls
+`createApp(context, runtime)` for every render. The optional runtime descriptor
+has `target: 'server'` during SSR or `target: 'client'` during hydration, plus
+the active `mode`. Use the factory to create request-scoped router and store
+instances and to select the data that enters the app.
 
 ```ts
 import { createSSRApp } from 'vue'
 import App from './App.vue'
 
-export function createApp(context) {
+export function createApp(context, runtime) {
   const app = createSSRApp(App)
   app.provide('requestContext', context)
+  app.provide('vueforgeRuntime', runtime)
   return app
 }
 ```

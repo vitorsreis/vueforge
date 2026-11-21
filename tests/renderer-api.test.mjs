@@ -83,16 +83,19 @@ test('public renderer accepts config-shaped options and ignores the project conf
 })
 
 test('public renderer accepts a direct main factory', async (t) => {
+  let receivedRuntime
   const renderer = await createVueforgeRenderer({
     mode: 'development',
-    main: (context) =>
-      createSSRApp(
+    main: (context, runtime) => {
+      receivedRuntime = runtime
+      return createSSRApp(
         {
           props: ['title'],
           template: '<h1>{{ title }}</h1>',
         },
         context.props,
-      ),
+      )
+    },
   })
   t.after(() => renderer.close())
 
@@ -105,6 +108,7 @@ test('public renderer accepts a direct main factory', async (t) => {
     head: [],
     content: '<h1>Direct</h1>',
   })
+  assert.deepEqual(receivedRuntime, { target: 'server', mode: 'development' })
 })
 
 test('public renderer reports invalid direct factory results clearly', async () => {

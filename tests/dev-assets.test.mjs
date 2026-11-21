@@ -6,6 +6,22 @@ import { URL, fileURLToPath } from 'node:url'
 import test from 'node:test'
 
 import { developmentRenderer } from '../dist/server/development.js'
+import { vueViteConfig } from '../dist/vite/vue-app.js'
+
+test('config factory changes request a browser reload', async () => {
+  const root = 'C:/project'
+  const configFile = `${root}/vueforge.config.ts`
+  const config = vueViteConfig(root, {}, { kind: 'factory', configFile })
+  const plugin = config.plugins?.[0]
+  const messages = []
+  const modules = await plugin.handleHotUpdate({
+    file: configFile,
+    server: { ws: { send: (message) => messages.push(message) } },
+  })
+
+  assert.deepEqual(messages, [{ type: 'full-reload', path: '*' }])
+  assert.equal(modules, undefined)
+})
 
 test('development compiles inline Vue templates with relative imports and CSS modules', async () => {
   const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))

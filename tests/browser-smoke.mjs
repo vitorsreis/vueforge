@@ -94,6 +94,7 @@ function inspectPage() {
     title: document.title,
     titleCount: document.querySelectorAll('head title').length,
     buttonText: button?.textContent,
+    runtimeTarget: document.querySelector('[data-runtime-target]')?.textContent,
     requestNoteCount: document.querySelectorAll('[data-request-note]').length,
     color: button && globalThis.getComputedStyle(button).color,
     styles: Array.from(
@@ -181,6 +182,12 @@ async function checkBrowser(browser, cwd, dev, source) {
     const hydrated = await page.evaluate(inspectPage)
     assert.equal(hydrated.titleCount, 1)
     assert.equal(hydrated.buttonText, 'External renderer 3')
+    if (source === 'factory') {
+      assert.equal(
+        hydrated.runtimeTarget,
+        `${mode === 'development' ? 'client:development' : 'client:production'}`,
+      )
+    }
     assert.equal(hydrated.requestNoteCount, 0)
     assert.equal(hydrated.color, staticState.color)
     assert.equal(await page.locator('head meta[charset="utf-8"]').count(), 1)
