@@ -4,6 +4,14 @@ import type { Component } from 'vue'
 /** Runtime mode used by Vueforge servers and renderers. */
 export type VueforgeMode = 'development' | 'production'
 
+/** Runtime target used when Vueforge creates an application instance. */
+export interface VueforgeRuntime {
+  /** Whether the application is being created for SSR or browser hydration. */
+  target: 'server' | 'client'
+  /** Active Vueforge mode. */
+  mode: VueforgeMode
+}
+
 export {
   createVueforgeRenderer,
   type VueforgeRenderBody,
@@ -175,11 +183,16 @@ export type VueforgeContext<
   state?: State
 }
 
-/** A request-scoped Vue application factory used by `main`. */
+/**
+ * A request-scoped Vue application factory used by `main`.
+ *
+ * The optional runtime describes whether the app is being created for SSR or
+ * browser hydration. Existing one-argument factories remain valid.
+ */
 export type VueforgeAppFactory<
   Context extends VueforgeContext = VueforgeContext,
   App = object,
-> = (context: Context) => App | Promise<App>
+> = (context: Context, runtime?: VueforgeRuntime) => App | Promise<App>
 
 /** Named Vue component sources used by a main template catalog. */
 export type VueforgeTemplateCatalog = Record<string, VueforgeTemplate>
@@ -249,8 +262,8 @@ export function defineConfig(config: VueforgeConfig): VueforgeConfig {
  * import { createSSRApp } from 'vue'
  * import { createVueforgeApp } from '@vitorsreis/vueforge'
  *
- * export default createVueforgeApp((context) =>
- *   createSSRApp(App, { ...context.props, user: context.user }),
+ * export default createVueforgeApp((context, runtime) =>
+ *   createSSRApp(App, { ...context.props, target: runtime?.target }),
  * )
  * ```
  */

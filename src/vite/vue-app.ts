@@ -6,6 +6,7 @@ import { normalizePath } from 'vite'
 import type { InlineConfig, Plugin, UserConfig } from 'vite'
 
 import type { AppSources, AppTemplate } from '../config/source.js'
+import type { VueforgeMode } from '../index.js'
 
 export const clientEntry = 'virtual:vueforge-client'
 export const serverEntry = 'virtual:vueforge-server'
@@ -76,12 +77,12 @@ function createComponentApp(context = {}, template) {
 
 function entryFactory(source: string) {
   return `import * as entry from ${JSON.stringify(source)}
-async function createEntryApp(context) {
+async function createEntryApp(context, _template, runtime) {
   const factory = entry.createApp ?? entry.default
   if (typeof factory !== 'function') throw new Error(
     'The Vue entry must export a createApp function or a default app factory.',
   )
-  const result = await factory(context)
+  const result = await factory(context, runtime)
   const app = result?.app ?? result
   if (typeof app?.mount !== 'function' || !app.config) throw new Error(
     'The Vue entry factory must return a Vue application or an object containing app.',
@@ -92,12 +93,12 @@ async function createEntryApp(context) {
 
 function configFactory(source: string) {
   return `import config from ${JSON.stringify(source)}
-async function createFactoryApp(context) {
+async function createFactoryApp(context, _template, runtime) {
   const factory = config.main
   if (typeof factory !== 'function') throw new Error(
     'The Vueforge main factory is not a function.',
   )
-  const result = await factory(context)
+  const result = await factory(context, runtime)
   const app = result?.app ?? result
   if (typeof app?.mount !== 'function' || !app.config) throw new Error(
     'The Vueforge main factory must return a Vue application or an object containing app.',
@@ -106,7 +107,12 @@ async function createFactoryApp(context) {
 }`
 }
 
-function entries(root: string, sources: AppSources, rootId: string): Plugin {
+function entries(
+  root: string,
+  sources: AppSources,
+  rootId: string,
+  mode: VueforgeMode,
+): Plugin {
   const inline = new Map<string, string>()
   let appFactory: string
 
@@ -140,6 +146,16 @@ function entries(root: string, sources: AppSources, rootId: string): Plugin {
   return {
     name: 'vueforge-entries',
 
+    handleHotUpdate(context) {
+      if (
+        sources.kind === 'factory' &&
+        normalizePath(context.file) === normalizePath(sources.configFile)
+      ) {
+        context.server.ws.send({ type: 'full-reload', path: '*' })
+      }
+      return undefined
+    },
+
     resolveId(id) {
       if (id === devClientPath) return '\0' + clientEntry
       if (id === clientEntry || id === serverEntry) return '\0' + id
@@ -166,7 +182,7 @@ async function hydrate() {
   const payload = readData('__VUEFORGE__') ?? {}
   const context = payload.context ?? payload
   const template = payload.template
-  const app = ${sources.kind === 'entry' ? 'await createEntryApp' : sources.kind === 'factory' ? 'await createFactoryApp' : 'createComponentApp'}(context, template)
+  const app = ${sources.kind === 'entry' ? 'await createEntryApp' : sources.kind === 'factory' ? 'await createFactoryApp' : 'createComponentApp'}(context, template, { target: 'client', mode: ${JSON.stringify(mode)} })
   const root = document.getElementById(${JSON.stringify(rootId)})
   if (!root) throw new Error(${JSON.stringify(`Vueforge hydration root was not found: ${rootId}`)})
   app.mount(root)
@@ -217,7 +233,7 @@ if (import.meta.hot) {
 import { renderToString } from 'vue/server-renderer'
 export async function render(context = {}, template) {
   const ssr = {}
-  const app = await ${sources.kind === 'entry' ? 'createEntryApp' : sources.kind === 'factory' ? 'createFactoryApp' : 'createComponentApp'}(context, template)
+  const app = await ${sources.kind === 'entry' ? 'createEntryApp' : sources.kind === 'factory' ? 'createFactoryApp' : 'createComponentApp'}(context, template, { target: 'server', mode: ${JSON.stringify(mode)} })
   app.config.throwUnhandledErrorInProduction = true
   const content = await renderToString(app, ssr)
   return { content, teleportHead: ssr.teleports?.head ?? '', modules: [...(ssr.modules ?? [])], context }
@@ -233,12 +249,18 @@ export function vueViteConfig(
   config: UserConfig,
   sources: AppSources,
   rootId = 'app',
+  mode: VueforgeMode = 'development',
 ): InlineConfig {
   return {
     ...config,
+    mode,
     root,
     base: '/',
     configFile: false,
-    plugins: [entries(root, sources, rootId), vue(), ...(config.plugins ?? [])],
+    plugins: [
+      entries(root, sources, rootId, mode),
+      vue(),
+      ...(config.plugins ?? []),
+    ],
   }
 }

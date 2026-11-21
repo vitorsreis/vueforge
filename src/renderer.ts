@@ -157,7 +157,10 @@ export async function createVueforgeRenderer(
     directMain !== undefined
       ? {
           render: async (context: Record<string, unknown> = {}) => {
-            const result = await directMain(context)
+            const result = await directMain(context, {
+              target: 'server',
+              mode,
+            })
             const candidate: unknown = result
             const app =
               candidate !== null &&

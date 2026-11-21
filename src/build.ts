@@ -76,7 +76,13 @@ export async function buildProject(
       const clientOut = join(staging, 'client')
       const serverOut = join(staging, 'server')
       await build({
-        ...vueViteConfig(root, config, sources, project.document?.rootId),
+        ...vueViteConfig(
+          root,
+          config,
+          sources,
+          project.document?.rootId,
+          'production',
+        ),
         build: {
           ...config.build,
           ...buildOverrides,
@@ -96,7 +102,13 @@ export async function buildProject(
       })
 
       await build({
-        ...vueViteConfig(root, config, sources, project.document?.rootId),
+        ...vueViteConfig(
+          root,
+          config,
+          sources,
+          project.document?.rootId,
+          'production',
+        ),
         ssr: { ...config.ssr, noExternal: true },
         build: {
           ...config.build,
