@@ -9,6 +9,7 @@ Send a JSON object with `Content-Type: application/json`. The body limit is 64 K
 | Field     | Type                 | Default  | Meaning                                                            |
 | --------- | -------------------- | -------- | ------------------------------------------------------------------ |
 | `props`   | JSON object          | `{}`     | Props passed to the root component.                                |
+| `context` | JSON object          | —        | Optional rendering context passed to the configured source.        |
 | `format`  | `"html"` or `"json"` | `"html"` | Controls how the `head` field is represented in the JSON response. |
 | `hydrate` | Boolean              | `false`  | Includes the browser entry and serialized props for hydration.     |
 
@@ -17,6 +18,8 @@ Send `{}` to render the component with its prop defaults.
 ```json
 { "props": { "title": "Hello" } }
 ```
+
+The configured source is selected in project configuration, not in the request body. `context` is passed as the first argument to an `entry` factory, or as the root `context` prop for `file` and `template` sources (taking precedence over `props.context`). The CLI accepts the same request fields through stdin. When `hydrate` is `true`, the complete context is serialized to the page and is public; use the same context for server rendering and hydration.
 
 With the component in the [quick start](../README.md), HTTP 200 returns the following JSON.
 

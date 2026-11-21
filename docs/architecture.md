@@ -1,19 +1,19 @@
 # Renderer architecture
 
-The project fixes the root component. Each request supplies data for that component. A backend can make repeated calls to a running HTTP server or start a one-shot process using the production build.
+The project chooses its root source in configuration: `file`, `template` or `entry`. With none selected, VueForge uses `src/App.vue`. Each request supplies props and optional public context. A backend can make repeated calls to a running HTTP server or start a one-shot process using the production build.
 
 ## From request to HTML
 
 1. The CLI resolves the project root and optional configuration. `vueforge serve` starts an HTTP listener with a development or production renderer. `vueforge render` loads the production renderer for one request.
 2. `POST /render` reads the JSON request from HTTP. The one-shot command reads it from stdin. Both use the same request fields and size limit.
-3. The server entry creates a fresh `createSSRApp(App, props)` and calls Vue's `renderToString` with an SSR context. The context contains the markup teleported to `head`. The result combines that markup and generated head entries with the rendered content.
+3. The server entry creates a fresh Vue app for the selected source and calls Vue's `renderToString` with an SSR context. For `file` and `template`, request context is passed as the root `context` prop, taking precedence over `props.context`. An `entry` source is a project-relative local module whose default factory receives `(context, props)` and returns an app, synchronously or asynchronously. The SSR context contains the markup teleported to `head`. The result combines that markup and generated head entries with the rendered content.
 4. `GET /` uses default props and enables hydration, then places the fragments in a complete HTML document. For backend-owned pages, the backend places `head` in `<head>` and `content` inside `#app`. The browser entry reads serialized props from the head and mounts an SSR app on `#app` to hydrate the markup.
 
 Modules can live for the lifetime of the process. Each render gets a new Vue app. Keep request-specific state inside that app or a per-request factory. Mutable objects at module scope can be shared by concurrent requests. VueForge does not cache rendered HTML.
 
 ## Development
 
-The VueForge plugin supplies virtual client and server entries that import `src/App.vue`. Vite runs as middleware on the same HTTP server. For each SSR call, VueForge requests the current entry from Vite's module runner. Vite reuses the module graph and invalidates changed modules. Browser HMR travels over Vite's WebSocket connection.
+The VueForge plugin supplies virtual client and server entries for the configured source. Inline `template` SFC imports resolve relative to the project root. Vite runs as middleware on the same HTTP server. For each SSR call, VueForge requests the current entry from Vite's module runner. Vite reuses the module graph and invalidates changed modules. Browser HMR travels over Vite's WebSocket connection.
 
 Development renders include inline `<style>` elements for the styles Vite discovers. Vite uses their `data-vite-dev-id` attributes to update those elements during HMR.
 
@@ -49,6 +49,6 @@ Ship the contents of both directories together and keep the renderer runtime ava
 | `src/render/`                                   | Validate render requests and assemble head and content responses.                |
 | `src/cli/render.ts`                             | Read a render request from stdin and write the response to stdout.               |
 
-Project modules and configuration execute with the Node process's privileges. The HTTP API accepts JSON props for trusted project code. Request-selected files, inline SFC compilation, custom `defineApp` entries and URL/context injection for routing are design proposals outside the current API.
+Project modules and configuration execute with the Node process's privileges, so project source selection is trusted configuration and never comes from the request body. Validate externally supplied props and context keys before using them. Each request gets a fresh Vue app; keep mutable request-specific state inside that app or its factory. With hydration enabled, the complete context is serialized for the browser and is public. Server rendering and hydration must use the same context.
 
 Run `npm run test:browser` from a source checkout to check backend-served hydration and development HMR in Chrome. Set `BROWSER_EXECUTABLE` to use a specific Chromium-based browser executable.

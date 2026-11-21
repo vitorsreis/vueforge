@@ -35,12 +35,39 @@ export default defineConfig({
 })
 ```
 
-| Option    | Default                  | Meaning                                                                                                                                                                                               |
-| --------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `host`    | `127.0.0.1`              | Listener hostname or IP. A CLI flag takes precedence over the file.                                                                                                                                   |
-| `port`    | `9901`                   | TCP port from 1 through 65535. A CLI flag takes precedence over the file.                                                                                                                             |
-| `tempDir` | `.vueforge`              | Directory dedicated to generated artifacts. Absolute paths are accepted. Relative paths resolve from the project root. Keep the same setting during build, production serving and one-shot rendering. |
-| `vite`    | Built-in Vue integration | Vite options such as aliases, compile-time definitions and additional plugins, passed to development and both builds.                                                                                 |
+| Option     | Default                  | Meaning                                                                                                                                                                                               |
+| ---------- | ------------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `host`     | `127.0.0.1`              | Listener hostname or IP. A CLI flag takes precedence over the file.                                                                                                                                   |
+| `port`     | `9901`                   | TCP port from 1 through 65535. A CLI flag takes precedence over the file.                                                                                                                             |
+| `tempDir`  | `.vueforge`              | Directory dedicated to generated artifacts. Absolute paths are accepted. Relative paths resolve from the project root. Keep the same setting during build, production serving and one-shot rendering. |
+| `vite`     | Built-in Vue integration | Vite options such as aliases, compile-time definitions and additional plugins, passed to development and both builds.                                                                                 |
+| `file`     | `src/App.vue`            | Project-relative Vue SFC used as the root component. Mutually exclusive with `template` and `entry`.                                                                                                  |
+| `template` | —                        | Inline Vue SFC source used as the root component. Relative imports resolve from the project root. Mutually exclusive with `file` and `entry`.                                                         |
+| `entry`    | —                        | Project-relative local module with a default app factory. Mutually exclusive with `file` and `template`.                                                                                              |
+
+By default VueForge uses `src/App.vue`. To select a source, set exactly one of `file`, `template` or `entry` in `vueforge.config.ts`:
+
+```ts
+import { defineConfig } from 'vueforge'
+
+export default defineConfig({
+  file: 'src/pages/Home.vue',
+})
+```
+
+An `entry` module exports a default factory that receives `(context, props)` and returns a fresh Vue app or a promise for it. An omitted context arrives as `undefined`; omitted props arrive as `{}`. The `defineApp` helper provides editor support.
+
+```ts
+import { createSSRApp } from 'vue'
+import { defineApp } from 'vueforge'
+import App from './src/App.vue'
+
+export default defineApp(async (context, props) =>
+  createSSRApp(App, { ...props, context }),
+)
+```
+
+HTTP and CLI render requests may include an optional JSON object `context`. For `file` and `template`, VueForge passes it as the root component's `context` prop; this takes precedence over `props.context`. With hydration enabled, `context` is serialized for the browser, so it is fully public. Keep the same context available for server rendering and hydration.
 
 VueForge supplies the Vue plugin, virtual entries, project root and base URL (`/`). It selects middleware mode for development and controls build entries, output layout and the client manifest. Put listener settings at the top level. Supply application-specific Vite options through `vite` in this file. The embedded server disables separate Vite config-file discovery.
 

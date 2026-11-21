@@ -1,6 +1,6 @@
 # VueForge
 
-VueForge renders your project's `src/App.vue` on the server. Your backend owns routes and business logic. Send JSON props over HTTP or stdin and get the page's head and body fragments, with optional browser hydration. In development, VueForge serves a hydrated preview with Vite hot module replacement (HMR).
+VueForge renders a project-configured Vue source on the server, using `src/App.vue` by default. Your backend owns routes and business logic. Send JSON props and optional context over HTTP or stdin and get the page's head and body fragments, with optional browser hydration. In development, VueForge serves a hydrated preview with Vite hot module replacement (HMR).
 
 ## Try your first render
 
@@ -43,9 +43,9 @@ printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render
 
 ## Guides
 
-- [CLI and configuration](docs/configuration.md) covers commands, defaults, overrides, and Vite integration.
+- [CLI and configuration](docs/configuration.md) covers commands, source selection, defaults, overrides, and Vite integration.
 - [HTTP API](docs/http-api.md) covers the three routes, response formats, and how to hydrate a page served by your backend.
-- [Renderer architecture](docs/architecture.md) explains hydration, request isolation, HMR, production artifacts, and planned features.
+- [Renderer architecture](docs/architecture.md) explains source loading, hydration, request isolation, HMR, and production artifacts.
 - [Contributing](CONTRIBUTING.md), [releases](docs/releases.md), and [security reporting](SECURITY.md) describe project maintenance.
 
 Licensed under the [MIT License](LICENSE).
