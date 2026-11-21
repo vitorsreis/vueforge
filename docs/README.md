@@ -14,6 +14,7 @@ VueForge connects a Vue 3 application to a backend written in any language. Star
 ## Maintain VueForge
 
 - [Benchmarking](maintainers/benchmarking.md) describes the local production SSR benchmark.
+- [Runtime support](maintainers/runtime-support.md) records the first-release runtime boundary.
 - [Release process](maintainers/releasing.md) describes the npm and GitHub release workflow.
 - [Contributing](../CONTRIBUTING.md) covers the development environment and quality checks.
 - [Security policy](../SECURITY.md) explains the trust boundary and vulnerability reporting.
