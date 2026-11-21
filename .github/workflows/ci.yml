@@ -30,4 +30,7 @@ jobs:
           cache: npm
       - run: npm ci
       - run: npm run check
+      - run: npm run test:qualification
+      - if: runner.os == 'Linux'
+        run: npm run test:browser
       - run: npm audit --audit-level=high

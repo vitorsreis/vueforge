@@ -4,7 +4,7 @@ VueForge renders a project-configured Vue source on the server, using `src/App.v
 
 ## Try your first render
 
-Use Node.js 26 and npm. VueForge is distributed as a package tarball through the GitHub release workflow. In a Vue project, install the downloaded archive with `npm install ./vueforge-<version>.tgz`, substituting its actual filename. For a source checkout, see [Contributing](CONTRIBUTING.md).
+Use Node.js 26 and npm. Install a published release with `npm install @vitorsreis/vueforge` in your Vue project. The package provides the `vueforge` executable. The GitHub Release includes the same package archive. For a source checkout, see [Contributing](CONTRIBUTING.md).
 
 Create `src/App.vue` in the project you want to render:
 

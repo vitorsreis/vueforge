@@ -31,7 +31,7 @@ export type VueForgeConfig = ProjectOptions & AppSource
  *
  * @example
  * ```ts
- * import { defineConfig } from 'vueforge'
+ * import { defineConfig } from '@vitorsreis/vueforge'
  *
  * export default defineConfig({ port: 4300, tempDir: '.cache/vueforge' })
  * ```

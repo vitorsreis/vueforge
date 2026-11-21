@@ -1,64 +1,160 @@
 name: Release
 
 on:
-  push:
-    tags: ['v*']
+  workflow_run:
+    workflows: [Release request]
+    types: [completed]
 
 permissions: {}
 
 concurrency:
-  group: release-${{ github.ref }}
+  group: release-${{ github.event.workflow_run.head_sha }}
   cancel-in-progress: false
 
 jobs:
   build:
+    if: >-
+      github.ref == 'refs/heads/main' &&
+      github.event.workflow_run.conclusion == 'success' &&
+      github.event.workflow_run.event == 'push' &&
+      github.event.workflow_run.head_repository.id == github.event.repository.id
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
+    outputs:
+      tag: ${{ steps.candidate.outputs.tag }}
+      tag_object: ${{ steps.verify.outputs.tag_object }}
+      archive: ${{ steps.pack.outputs.archive }}
     steps:
       - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
         with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Resolve release candidate
+        id: candidate
+        env:
+          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { execFileSync } from 'node:child_process'
+          import { appendFileSync } from 'node:fs'
+
+          const sha = process.env.HEAD_SHA
+          assert.match(sha ?? '', /^[a-f0-9]{40}$/)
+          const commit = execFileSync('git', ['rev-parse', '--verify', `${sha}^{commit}`], { encoding: 'utf8' }).trim()
+          const manifest = execFileSync('git', ['show', `${commit}:package.json`], { encoding: 'utf8' })
+          const { name, version } = JSON.parse(manifest)
+          assert.equal(name, '@vitorsreis/vueforge')
+          assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)
+          appendFileSync(process.env.GITHUB_OUTPUT, `commit=${commit}\ntag=v${version}\n`)
+          JS
+      - name: Verify signed tag on main
+        id: verify
+        env:
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+          RELEASE_CANDIDATE: ${{ steps.candidate.outputs.commit }}
+          RELEASE_GPG_PUBLIC_KEY: ${{ vars.RELEASE_GPG_PUBLIC_KEY }}
+          RELEASE_GPG_FINGERPRINT: ${{ vars.RELEASE_GPG_FINGERPRINT }}
+        run: |
+          export GNUPGHOME="$(mktemp -d)"
+          node .github/scripts/verify-release.mjs >> "$GITHUB_OUTPUT"
+      - uses: actions/checkout@d23441a48e516b6c34aea4fa41551a30e30af803 # v6
+        with:
+          ref: ${{ steps.verify.outputs.commit }}
           persist-credentials: false
       - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
         with:
           node-version-file: .node-version
           cache: npm
-      - name: Validate release version
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict'
-          import { readFileSync } from 'node:fs'
-
-          const { version } = JSON.parse(readFileSync('package.json', 'utf8'))
-          assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)
-          assert.equal(process.env.RELEASE_TAG, `v${version}`)
-          JS
+      - run: node .github/scripts/test-release-verification.mjs
       - run: npm ci
       - run: npm run check
       - run: npm audit --audit-level=high
-      - run: npm pack
+      - name: Pack and qualify release
+        id: pack
+        env:
+          RELEASE_TAG: ${{ steps.candidate.outputs.tag }}
+        run: |
+          archive="vitorsreis-vueforge-${RELEASE_TAG#v}.tgz"
+          npm pack
+          npm run test:qualification -- "./$archive"
+          echo "archive=$archive" >> "$GITHUB_OUTPUT"
       - uses: actions/upload-artifact@b7c566a772e6b6bfb58ed0dc250532a479d7789f # v6
         with:
           name: package
-          path: '*.tgz'
+          path: ${{ steps.pack.outputs.archive }}
           if-no-files-found: error
 
   publish:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 5
+    environment: release
     permissions:
       contents: write
+      id-token: write
+    env:
+      RELEASE_TAG: ${{ needs.build.outputs.tag }}
+      RELEASE_ARCHIVE: ${{ needs.build.outputs.archive }}
     steps:
       - uses: actions/download-artifact@37930b1c2abaa49bbe596cd826c3c89aef350131 # v7
         with:
           name: package
+      - uses: actions/setup-node@249970729cb0ef3589644e2896645e5dc5ba9c38 # v6
+        with:
+          node-version: '26'
+          package-manager-cache: false
+      - name: Check tag is still current
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          VERIFIED_TAG_OBJECT: ${{ needs.build.outputs.tag_object }}
+        run: |
+          current_tag_object=$(gh api "repos/$GH_REPO/git/ref/tags/$RELEASE_TAG" --jq '.object.sha')
+          if [[ "$current_tag_object" != "$VERIFIED_TAG_OBJECT" ]]; then
+            echo 'The release tag changed after verification.' >&2
+            exit 1
+          fi
+      - name: Publish public npm package
+        run: |
+          node --input-type=module <<'JS'
+          import assert from 'node:assert/strict'
+          import { execFileSync } from 'node:child_process'
+          import { createHash } from 'node:crypto'
+          import { readFileSync } from 'node:fs'
+
+          const version = process.env.RELEASE_TAG.slice(1)
+          const archive = `./${process.env.RELEASE_ARCHIVE}`
+          const integrity = `sha512-${createHash('sha512').update(readFileSync(archive)).digest('base64')}`
+          const registry = 'https://registry.npmjs.org'
+          const response = await fetch(`${registry}/@vitorsreis%2fvueforge/${version}`)
+
+          if (response.status === 404) {
+            execFileSync('npm', ['publish', archive, '--access', 'public', '--provenance', '--ignore-scripts', '--registry', registry], { stdio: 'inherit' })
+          } else {
+            assert.ok(response.ok, `Could not check the npm release (HTTP ${response.status})`)
+            const metadata = await response.json()
+            assert.equal(metadata.dist?.integrity, integrity, 'The published npm version has different bytes')
+          }
+          JS
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: gh release create "$RELEASE_TAG" ./*.tgz --verify-tag --generate-notes
+        run: |
+          if release=$(gh release view "$RELEASE_TAG" --json isDraft,assets); then
+            if jq -e --arg archive "$RELEASE_ARCHIVE" 'any(.assets[]; .name == $archive)' <<< "$release" > /dev/null; then
+              existing=$(mktemp -d)
+              gh release download "$RELEASE_TAG" --pattern "$RELEASE_ARCHIVE" --dir "$existing"
+              cmp -- "$RELEASE_ARCHIVE" "$existing/$RELEASE_ARCHIVE"
+            else
+              gh release upload "$RELEASE_TAG" "$RELEASE_ARCHIVE"
+            fi
+            if jq -e '.isDraft' <<< "$release" > /dev/null; then
+              gh release edit "$RELEASE_TAG" --draft=false
+            fi
+          else
+            gh release create "$RELEASE_TAG" "$RELEASE_ARCHIVE" --verify-tag --generate-notes
+          fi

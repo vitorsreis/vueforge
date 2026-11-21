@@ -21,6 +21,8 @@ Send `{}` to render the component with its prop defaults.
 
 The configured source is selected in project configuration, not in the request body. `context` is passed as the first argument to an `entry` factory, or as the root `context` prop for `file` and `template` sources (taking precedence over `props.context`). The CLI accepts the same request fields through stdin. When `hydrate` is `true`, the complete context is serialized to the page and is public; use the same context for server rendering and hydration.
 
+For component sources, only declared Vue props are passed to the root during SSR and hydration. Declare a `context` prop to receive request context. An entry factory receives the full request objects and chooses which fields to pass through. All submitted props and context are public when hydration is enabled, including fields the component ignores.
+
 With the component in the [quick start](../README.md), HTTP 200 returns the following JSON.
 
 ```json
@@ -78,6 +80,10 @@ Render errors use a JSON body with an `error` string. Use the HTTP status to cho
 | 413    | Body exceeds 64 KiB                                          | Reduce the data passed to the component.                                     |
 | 415    | Unsupported charset or content encoding                      | Send uncompressed UTF-8 JSON.                                                |
 | 500    | SSR threw while handling the render                          | Inspect the VueForge process log for the original exception.                 |
+| 503    | All four render slots are occupied                           | Honor the `Retry-After` header before retrying.                              |
+| 504    | The render exceeded its five-second deadline                 | Inspect slow component work and upstream calls.                              |
+
+The production HTTP server terminates a worker that exceeds the deadline and limits the combined rendered content and teleported head to 4 MiB before transferring them to the HTTP process. Development keeps using Vite's module runner. An asynchronous render that times out still occupies a slot until it settles. Synchronous development code can block the dev server. The one-shot CLI uses its own process.
 
 For example, sending `{"props":[]}` returns HTTP 400 and:
 
@@ -94,8 +100,9 @@ Returns HTTP 200 with project information as JSON.
 ```json
 {
   "message": "Welcome to VueForge!",
-  "repository": "https://github.com/vitorsreis/vueforge",
-  "poweredBy": "Vitor Reis"
+  "poweredBy": "Vitor Reis",
+  "repo": "https://github.com/vitorsreis/vueforge",
+  "version": "0.0.0"
 }
 ```
 
