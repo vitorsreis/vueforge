@@ -18,11 +18,11 @@ const renderer = await createVueforgeRenderer({
 
 Options:
 
-| Option   | Description                                                                                                                    |
-| -------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `root`   | Project directory. Defaults to `process.cwd()`.                                                                                |
-| `mode`   | `development` or `production`. Defaults to `production`.                                                                       |
-| `config` | Optional configuration file path relative to `root`. When omitted, the remaining options form the inline render configuration. |
+| Option   | Description                                                                                                                                           |
+| -------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `root`   | Project directory. Defaults to `process.cwd()`.                                                                                                       |
+| `mode`   | Explicit `development` or `production` mode. When omitted, uses config `mode` and then defaults to `production`.                                      |
+| `config` | Optional configuration file path relative to `root`. When omitted, `vueforge.config.ts` is loaded when present and the remaining options override it. |
 
 The renderer resolves `main` exactly like the CLI. Development mode uses
 Vite's SSR runner and reloads changed modules. Production mode reads the
@@ -56,6 +56,9 @@ const renderer = await createVueforgeRenderer({
   config: 'config/vueforge.server.ts',
 })
 ```
+
+Top-level renderer options supplied alongside `config` override values loaded
+from that file.
 
 ## Render a request
 
