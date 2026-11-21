@@ -73,7 +73,13 @@ For a single render without opening an HTTP listener, send one JSON request to s
 printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render
 ```
 
-The command writes the same response shape as `POST /render` to standard output.
+The command writes the same response shape as `POST /render` to standard output. Use
+`--format json` to force the JSON response envelope or `--format html` to write a
+complete neutral HTML document. The CLI option overrides a `format` value in stdin.
+
+```sh
+printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render --format html
+```
 
 ## Commands
 
@@ -84,8 +90,12 @@ The command writes the same response shape as `POST /render` to standard output.
 | `vueforge serve`       | Start the production HTTP server from a completed build.   |
 | `vueforge render`      | Render one production request from standard input.         |
 | `vueforge --help`      | Print command usage.                                       |
+| `vueforge --version`   | Print the installed package version.                       |
 
 Use `--host` and `--port` with `serve` to override the configuration for one run.
+Use `--config <path>` with any command to select a JavaScript or TypeScript
+VueForge configuration file. Run `vueforge <command> --help` for command-specific
+options.
 
 ## Configuration
 

@@ -1,6 +1,5 @@
-import { existsSync } from 'node:fs'
 import { stat } from 'node:fs/promises'
-import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { extname, isAbsolute, relative, resolve, sep } from 'node:path'
 
 import { loadConfigFromFile, mergeConfig, normalizePath } from 'vite'
 import type { ConfigEnv } from 'vite'
@@ -59,14 +58,46 @@ export async function resolveAppSource(
   return { kind: field ?? 'file', url: '/' + normalizePath(path) }
 }
 
-export async function loadProjectConfig(root: string, env: ConfigEnv) {
-  const file = join(root, 'vueforge.config.ts')
+const configExtensions = new Set(['.cjs', '.cts', '.js', '.mjs', '.mts', '.ts'])
 
-  const projectConfig = existsSync(file)
+async function resolveProjectConfigFile(
+  root: string,
+  configFile: string | undefined,
+): Promise<string | undefined> {
+  const file = resolve(root, configFile ?? 'vueforge.config.ts')
+  const fileStat = await stat(file).catch(() => undefined)
+
+  if (configFile === undefined) {
+    return fileStat?.isFile() ? file : undefined
+  }
+
+  if (!configExtensions.has(extname(file).toLowerCase())) {
+    throw new Error(
+      'The VueForge configuration file must use .js, .mjs, .cjs, .ts, .mts, or .cts.',
+    )
+  }
+  if (!fileStat) {
+    throw new Error(`VueForge configuration file does not exist: ${configFile}`)
+  }
+  if (!fileStat.isFile()) {
+    throw new Error(`VueForge configuration path is not a file: ${configFile}`)
+  }
+
+  return file
+}
+
+export async function loadProjectConfig(
+  root: string,
+  env: ConfigEnv,
+  configFile?: string,
+) {
+  const file = await resolveProjectConfigFile(root, configFile)
+
+  const projectConfig = file
     ? await loadConfigFromFile(env, file, root)
     : undefined
-  if (existsSync(file) && !projectConfig) {
-    throw new Error('Could not load vueforge.config.ts.')
+  if (file && !projectConfig) {
+    throw new Error(`Could not load ${relative(root, file) || file}.`)
   }
 
   const viteConfig = await loadConfigFromFile(env, undefined, root)

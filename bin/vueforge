@@ -1,7 +1,6 @@
 #!/usr/bin/env node
-import process from 'node:process'
 import console from 'node:console'
-import { parseArgs } from 'node:util'
+import process from 'node:process'
 
 import {
   listenOptions,
@@ -9,79 +8,66 @@ import {
   resolveTempDir,
 } from '../dist/config.js'
 import { buildProject } from '../dist/build.js'
+import { CliUsageError, parseCliArguments } from '../dist/cli/arguments.js'
+import { cliHelp } from '../dist/cli/help.js'
 import { renderProject } from '../dist/cli/render.js'
+import { packageVersion } from '../dist/cli/version.js'
 import { serveProject } from '../dist/server/serve.js'
 
-const help = `Usage:
-  vueforge serve [--dev] [--host <host>] [--port <port>]
-  vueforge build
-  vueforge render`
-
 async function main() {
-  const { values, positionals } = parseArgs({
-    options: {
-      dev: { type: 'boolean' },
-      host: { type: 'string' },
-      port: { type: 'string' },
-      help: { type: 'boolean', short: 'h' },
-    },
-    allowPositionals: true,
-  })
+  const args = parseCliArguments(process.argv.slice(2))
 
-  const [command] = positionals
-  const unknownCommand =
-    command !== undefined &&
-    command !== 'serve' &&
-    command !== 'build' &&
-    command !== 'render'
-  const hasServeOptions =
-    values.dev || values.host !== undefined || values.port !== undefined
-
-  if (unknownCommand) {
-    throw new Error(`Unknown command "${command}".\n${help}`)
+  if (args.help) {
+    console.log(cliHelp(args.command))
+    return
   }
 
-  if (positionals.length > 1) {
-    throw new Error(
-      `Unexpected argument "${positionals[1]}". Run the command from the project root.\n${help}`,
-    )
+  if (args.version) {
+    console.log(packageVersion)
+    return
   }
 
-  if (hasServeOptions && command !== 'serve') {
-    throw new Error(
-      `The --dev, --host and --port options belong to "serve".\n${help}`,
-    )
-  }
-
-  if (values.help || !command) {
-    console.log(help)
+  if (args.command === undefined) {
+    console.log(cliHelp())
     return
   }
 
   const root = process.cwd()
-  if (command === 'render') {
-    await renderProject(root)
+  if (args.command === 'render') {
+    await renderProject(root, args.format, args.config)
     return
   }
 
-  const dev = values.dev ?? false
-  const config = await loadProjectConfig(root, {
-    command: command === 'build' ? 'build' : 'serve',
-    mode: dev ? 'development' : 'production',
-  })
-
+  const dev = args.command === 'serve' && args.dev
+  const config = await loadProjectConfig(
+    root,
+    {
+      command: args.command === 'build' ? 'build' : 'serve',
+      mode: dev ? 'development' : 'production',
+    },
+    args.config,
+  )
   const tempDir = resolveTempDir(root, config.tempDir)
 
-  if (command === 'build') {
+  if (args.command === 'build') {
     await buildProject(root, tempDir, config)
     return
   }
 
-  const listener = listenOptions(config, values.host, values.port)
+  const listener = listenOptions(config, args.host, args.port)
   await serveProject(root, dev, listener, tempDir, config)
 }
 
-main().catch((error) => {
-  console.error(error instanceof Error ? error.message : error)
-  process.exitCode = 1
-})
+try {
+  await main()
+} catch (error) {
+  if (error instanceof CliUsageError) {
+    console.error(`Error: ${error.message}`)
+    console.error('')
+    console.error(cliHelp())
+    process.exitCode = error.exitCode
+  } else {
+    console.error(error instanceof Error ? error.message : error)
+    process.exitCode = 1
+  }
+}

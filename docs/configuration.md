@@ -11,8 +11,15 @@ VueForge uses the current working directory as the project root. A project with 
 | `vueforge serve`       | Start the production HTTP server from the artifacts.        |
 | `vueforge render`      | Render one production request from standard input.          |
 | `vueforge --help`      | Print command usage.                                        |
+| `vueforge --version`   | Print the installed package version.                        |
 
-`serve` accepts `--host <host>` and `--port <port>`. Command-line values override the configuration file for that run.
+All commands accept `--config <path>` or `-c <path>`. Relative paths resolve from
+the project root, and the file must use `.js`, `.mjs`, `.cjs`, `.ts`, `.mts`, or
+`.cts`. `serve` accepts `--dev`, `--host <host>`, and `--port <port>`. Command-line
+values override the configuration file for that run.
+
+Use `vueforge --help` for global options and `vueforge <command> --help` for the
+options and input contract of one command.
 
 ```sh
 npx vueforge serve --dev --host 127.0.0.1 --port 9901
@@ -161,10 +168,20 @@ Use the same `tempDir` with `build`, `serve`, and `render`. Deploy both director
 
 ## Rendering from standard input
 
-`vueforge render` reads one UTF-8 JSON request from standard input, up to 64 KiB, and writes one JSON response followed by a newline to standard output. It uses the production artifacts and opens no listener.
+`vueforge render` reads one UTF-8 JSON request from standard input, up to 64 KiB,
+and writes one response to standard output. It uses the production artifacts and
+opens no listener. JSON is the default CLI output. Pass `--format json` to force the
+JSON response envelope or `--format html` to write a complete document.
 
 ```sh
 printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render
+```
+
+The HTML output places the rendered head entries inside `<head>` and the rendered
+content inside `<div id="app">`.
+
+```sh
+printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render --format html
 ```
 
 Diagnostics are written to standard error. With an interactive terminal as standard input, the command renders `{}`.
