@@ -7,6 +7,7 @@ export interface CliArguments {
   command?: CliCommand
   config?: string
   dev: boolean
+  devSpecified: boolean
   format?: RenderOutputFormat
   hydrate: boolean
   template?: string
@@ -180,6 +181,7 @@ export function parseCliArguments(args: string[]): CliArguments {
 
   const result: CliArguments = {
     dev: parsed.values.dev ?? false,
+    devSpecified: parsed.values.dev !== undefined,
     help: parsed.values.help ?? false,
     pretty: parsed.values.pretty ?? false,
     hydrate: parsed.values.hydrate ?? false,

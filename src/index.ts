@@ -1,6 +1,9 @@
 import type { UserConfig } from 'vite'
 import type { Component } from 'vue'
 
+/** Runtime mode used by Vueforge servers and renderers. */
+export type VueforgeMode = 'development' | 'production'
+
 export {
   createVueforgeRenderer,
   type VueforgeRenderBody,
@@ -74,6 +77,8 @@ export interface ServerOptions {
 }
 
 interface ProjectOptions {
+  /** Runtime mode used by `serve` and framework-neutral renderers. */
+  mode?: VueforgeMode
   /** HTTP server, transport, TLS and CORS settings. */
   server?: ServerOptions
   /** Default response representation. */

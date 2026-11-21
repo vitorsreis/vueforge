@@ -2,12 +2,13 @@ import { resolve } from 'node:path'
 
 import {
   loadProjectConfig,
+  resolveMode,
   resolveAppSources,
   resolveAssetBase,
   resolveBuildOutputDir,
   resolveRenderLimits,
 } from './config.js'
-import type { HeadEntry, VueforgeConfig } from './index.js'
+import type { HeadEntry, VueforgeConfig, VueforgeMode } from './index.js'
 import { createRenderHandler } from './server/render/handler.js'
 import { createRenderHandlerOptions } from './server/render/handler-options.js'
 import { developmentRenderer } from './server/development.js'
@@ -16,23 +17,16 @@ import { productionWorkerRenderer } from './server/production/worker-renderer.js
 import type { RenderOutputFormat } from './render/request.js'
 
 /** Runtime mode used by a public Vueforge renderer. */
-export type VueforgeRendererMode = 'development' | 'production'
+export type VueforgeRendererMode = VueforgeMode
+
+/** Vueforge configuration accepted by a framework-neutral renderer. */
+export type VueforgeRendererConfig = Omit<VueforgeConfig, 'server' | 'tempDir'>
 
 /** Options used to initialize a public Vueforge renderer. */
-export interface VueforgeRendererOptions {
-  /** Project directory. Defaults to the current working directory. */
-  root?: string
-  /** Runtime mode. Defaults to `production`. */
-  mode?: VueforgeRendererMode
-  /** Configuration file path or inline render configuration. */
-  config?: string | VueforgeRendererConfig
+export type VueforgeRendererOptions = VueforgeRendererConfig & {
+  /** Configuration file path relative to `root`. */
+  config?: string
 }
-
-/** Configuration used by a framework-neutral renderer. */
-export type VueforgeRendererConfig = Omit<
-  VueforgeConfig,
-  'root' | 'server' | 'tempDir'
->
 
 /** Request passed to a public Vueforge renderer. */
 export interface VueforgeRenderRequest {
@@ -127,22 +121,21 @@ export interface VueforgeRenderer {
 export async function createVueforgeRenderer(
   options: VueforgeRendererOptions = {},
 ): Promise<VueforgeRenderer> {
-  const mode = options.mode ?? 'production'
   const requestedRoot = resolve(options.root ?? process.cwd())
+  const requestedMode = resolveMode(options.mode)
+  const { config: configFile, ...inlineConfig } = options
+  const loadedConfig = await loadProjectConfig(
+    requestedRoot,
+    { command: 'serve', mode: requestedMode },
+    configFile,
+    undefined,
+    configFile === undefined ? inlineConfig : undefined,
+  )
   const config: VueforgeConfig =
-    typeof options.config === 'object'
-      ? await loadProjectConfig(
-          requestedRoot,
-          { command: 'serve', mode },
-          undefined,
-          requestedRoot,
-          options.config,
-        )
-      : await loadProjectConfig(
-          requestedRoot,
-          { command: 'serve', mode },
-          options.config,
-        )
+    configFile === undefined
+      ? loadedConfig
+      : { ...loadedConfig, ...inlineConfig }
+  const mode = resolveMode(options.mode ?? config.mode)
   const root = resolve(config.root ?? requestedRoot)
   const limits = resolveRenderLimits(config)
   const sources =

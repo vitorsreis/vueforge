@@ -2,7 +2,11 @@
 import console from 'node:console'
 import process from 'node:process'
 
-import { loadProjectConfig, resolveTempDir } from '../dist/config.js'
+import {
+  loadProjectConfig,
+  resolveMode,
+  resolveTempDir,
+} from '../dist/config.js'
 import { listenOptions } from '../dist/server/transports/config.js'
 import { buildProject } from '../dist/build.js'
 import { CliUsageError, parseCliArguments } from '../dist/cli/arguments.js'
@@ -43,15 +47,19 @@ async function main() {
     return
   }
 
-  const dev = args.command === 'serve' && args.dev
+  const requestedDev = args.command === 'serve' && args.dev
   const config = await loadProjectConfig(
     root,
     {
       command: args.command === 'build' ? 'build' : 'serve',
-      mode: dev ? 'development' : 'production',
+      mode: requestedDev ? 'development' : 'production',
     },
     args.config,
   )
+  const dev =
+    args.command === 'serve' &&
+    (requestedDev ||
+      (!args.devSpecified && resolveMode(config.mode) === 'development'))
   const projectRoot = config.root ?? root
   if (args.limits !== undefined) {
     config.limits = { ...config.limits, ...args.limits }

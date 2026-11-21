@@ -4,9 +4,21 @@ import { dirname, extname, relative, resolve } from 'node:path'
 import { loadConfigFromFile, mergeConfig, runnerImport } from 'vite'
 import type { ConfigEnv, Plugin } from 'vite'
 
-import type { VueforgeConfig } from './index.js'
+import type { VueforgeConfig, VueforgeMode } from './index.js'
 export { resolveAppSource, resolveAppSources } from './config/source.js'
 export type { AppSources, AppTemplate } from './config/source.js'
+
+/** Resolves and validates a Vueforge runtime mode. */
+export function resolveMode(
+  value: unknown,
+  fallback: VueforgeMode = 'production',
+): VueforgeMode {
+  if (value === undefined) return fallback
+  if (value === 'development' || value === 'production') return value
+  throw new Error(
+    'vueforge.config.ts: mode must be "development" or "production".',
+  )
+}
 
 export function resolveAssetBase(origin: unknown, base: unknown = '/') {
   if (typeof base !== 'string' || !base.trim() || !base.startsWith('/')) {
@@ -95,10 +107,7 @@ export async function loadProjectConfig(
   explicitRoot?: string,
   inlineConfig?: Record<string, unknown>,
 ) {
-  const file =
-    inlineConfig === undefined
-      ? await resolveProjectConfigFile(root, configFile)
-      : undefined
+  const file = await resolveProjectConfigFile(root, configFile)
 
   let projectConfig
   if (file) {

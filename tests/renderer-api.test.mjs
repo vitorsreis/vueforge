@@ -56,7 +56,7 @@ test('public renderer renders development requests without an HTTP framework', a
   })
 })
 
-test('public renderer accepts an inline config and ignores the project config file', async (t) => {
+test('public renderer accepts config-shaped options and ignores the project config file', async (t) => {
   const root = await createProject(t, undefined, {
     'vueforge.config.ts': "export default { main: 'src/Missing.vue' }",
     'src/App.vue': '<template><h1>Inline config</h1></template>',
@@ -65,7 +65,8 @@ test('public renderer accepts an inline config and ignores the project config fi
   const renderer = await createVueforgeRenderer({
     root,
     mode: 'development',
-    config: { main: 'src/App.vue', vite: { server: { hmr: false } } },
+    main: 'src/App.vue',
+    vite: { server: { hmr: false } },
   })
   t.after(() => renderer.close())
 
@@ -82,18 +83,19 @@ test('public renderer accepts an inline config and ignores the project config fi
 
 test('public renderer accepts a custom config path', async (t) => {
   const root = await createProject(t, undefined, {
-    'custom/vueforge.server.ts': "export default { main: 'src/App.vue' }",
+    'custom/vueforge.server.ts':
+      "export default { mode: 'development', main: 'src/App.vue' }",
     'src/App.vue': '<template><h1>Custom config</h1></template>',
   })
 
   const renderer = await createVueforgeRenderer({
     root,
-    mode: 'development',
     config: 'custom/vueforge.server.ts',
   })
   t.after(() => renderer.close())
 
   const response = await renderer.render({ context: {}, format: 'json' })
+  assert.equal(renderer.mode, 'development')
   assert.equal(response.status, 200)
   assert.deepEqual(response.body, {
     head: [

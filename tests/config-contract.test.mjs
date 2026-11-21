@@ -11,6 +11,7 @@ import {
   resolveAppSources,
   resolveAssetBase,
   resolveBuildOutputDir,
+  resolveMode,
   resolveRenderLimits,
 } from '../dist/config.js'
 
@@ -147,4 +148,13 @@ test('resolves origin and base for public browser assets', () => {
     'http://127.0.0.1:9901/admin/',
   )
   assert.throws(() => resolveAssetBase('localhost:9901', '/admin'), /origin/)
+})
+
+test('resolves and validates runtime modes', () => {
+  assert.equal(resolveMode(undefined), 'production')
+  assert.equal(resolveMode('development'), 'development')
+  assert.throws(
+    () => resolveMode('preview'),
+    /mode must be "development" or "production"/i,
+  )
 })

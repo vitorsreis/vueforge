@@ -255,3 +255,60 @@ for (const mode of [
     }
   })
 }
+
+test(
+  'serve uses development mode from config when --dev is omitted',
+  { timeout: 60000 },
+  async (t) => {
+    await mkdir(scratch, { recursive: true })
+    const cwd = await mkdtemp(join(scratch, 'cli-config-mode-'))
+    t.after(() => rm(cwd, { recursive: true, force: true, maxRetries: 3 }))
+    await cp(example, join(cwd, 'src'), { recursive: true })
+    const port = await availablePort()
+    await writeFile(
+      join(cwd, 'vueforge.config.ts'),
+      `export default ${JSON.stringify({
+        mode: 'development',
+        server: { host: '127.0.0.1', port },
+        vite: { server: { hmr: false } },
+      })}`,
+    )
+
+    const url = `http://127.0.0.1:${String(port)}`
+    const child = spawn(execPath, [cli, 'serve'], {
+      cwd,
+      stdio: ['ignore', 'pipe', 'pipe'],
+    })
+    const closed = once(child, 'close')
+    let log = ''
+    for (const stream of [child.stdout, child.stderr]) {
+      stream.setEncoding('utf8').on('data', (chunk) => {
+        log += chunk
+      })
+    }
+
+    try {
+      const deadline = Date.now() + 15000
+      while (!log.includes(url)) {
+        assert.ok(
+          child.exitCode === null && Date.now() < deadline,
+          'Startup failed: ' + log,
+        )
+        await delay(50)
+      }
+
+      const response = await post(
+        url,
+        JSON.stringify({ props: { title: 'Config' } }),
+      )
+      assert.equal(response.status, 200)
+      assert.deepEqual((await response.json()).head, [
+        { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
+        { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
+      ])
+    } finally {
+      child.kill()
+      await closed
+    }
+  },
+)
