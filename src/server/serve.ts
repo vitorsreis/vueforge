@@ -15,7 +15,11 @@ import { productionRenderer } from './production.js'
 import { productionWorkerRenderer } from './production-worker-renderer.js'
 import { renderRoute } from './render-route.js'
 import { createNodeServer, startNodeAdapter } from './node-adapter.js'
-import { hasBunRuntime, startBunAdapter } from './bun-adapter.js'
+import {
+  hasBunRuntime,
+  startBunAdapter,
+  startBunProxyAdapter,
+} from './bun-adapter.js'
 import { readJsonRequestBody } from './http-render-input.js'
 import { serveStdio } from './stdio.js'
 import type { ServerTransport } from './transports.js'
@@ -186,6 +190,102 @@ export async function serveProject(
       await renderer.close?.()
     }
     return
+  }
+
+  if (hasBunRuntime() && dev) {
+    if (transport.kind === 'unix') {
+      throw new Error('Bun development mode requires a TCP listener for HMR.')
+    }
+
+    const app = express()
+    app.disable('x-powered-by')
+    const internalServer = await createNodeServer(root, undefined, app)
+    const internalAdapter = await startNodeAdapter({
+      server: internalServer,
+      requestHandler: app,
+      root,
+      transport: { kind: 'tcp', host: '127.0.0.1', port: 0 },
+    })
+    const address = internalServer.address()
+    if (address === null || typeof address === 'string') {
+      await internalAdapter.close()
+      throw new Error('VueForge could not determine the internal Vite port.')
+    }
+
+    let renderer: RenderService | undefined
+    let adapter: Awaited<ReturnType<typeof startBunProxyAdapter>> | undefined
+    try {
+      renderer = {
+        ...(await developmentRenderer(
+          root,
+          config,
+          internalServer,
+          '127.0.0.1',
+          address.port,
+          transport.port,
+        )),
+      }
+      if (renderer.hostGuard !== undefined) app.use(renderer.hostGuard)
+      app.get('/healthz', (_request, response) => {
+        response.set('Cache-Control', 'no-store').json({ status: 'ok' })
+      })
+      app.get('/', (_request, response) =>
+        response.json({
+          message: 'Welcome to VueForge!',
+          poweredBy: 'Vitor Reis',
+          repo: 'https://github.com/vitorsreis/vueforge',
+          version,
+        }),
+      )
+      app.use(
+        '/render',
+        renderRoute(
+          renderer.render,
+          handlerOptions(config, limits, {
+            development: true,
+            interruptible: true,
+            root,
+          }),
+        ),
+      )
+      app.use(
+        renderer.middleware ??
+          ((_request, response) => response.status(404).end()),
+      )
+
+      adapter = await startBunProxyAdapter({
+        root,
+        targetOrigin: `http://127.0.0.1:${String(address.port)}`,
+        transport,
+        ...(config.ssl === undefined ? {} : { ssl: config.ssl }),
+        ...(config.shutdownTimeoutMs === undefined
+          ? {}
+          : { shutdownTimeoutMs: config.shutdownTimeoutMs }),
+      })
+      const close = async () => {
+        process.off('SIGINT', signalHandler)
+        process.off('SIGTERM', signalHandler)
+        await renderer?.close?.()
+        await adapter?.close()
+        await internalAdapter.close()
+      }
+      const signalHandler = () => {
+        void close().finally(() => {
+          process.exitCode = 0
+        })
+      }
+      process.once('SIGINT', signalHandler)
+      process.once('SIGTERM', signalHandler)
+      console.log(
+        `VueForge listening on ${config.ssl ? 'https' : 'http'}://${transport.host}:${String(transport.port)}`,
+      )
+      return { close }
+    } catch (error) {
+      await renderer?.close?.()
+      await adapter?.close()
+      await internalAdapter.close()
+      throw error
+    }
   }
 
   if (hasBunRuntime() && !dev) {
