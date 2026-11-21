@@ -15,7 +15,6 @@ export async function developmentRenderer(
   server: Server,
   host: string,
   port: number,
-  hmrPort = port,
 ) {
   const source = await resolveAppSource(root, project)
   const config = project.vite ?? {}
@@ -34,7 +33,6 @@ export async function developmentRenderer(
           ? false
           : {
               ...(typeof hmr === 'object' ? hmr : {}),
-              port: hmrPort,
               overlay: false,
             },
       ws:

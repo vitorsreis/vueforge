@@ -90,6 +90,33 @@ function renderHeadEntries(
   return entries
 }
 
+function renderHtmlHead(
+  { teleportHead, assets }: RenderResult,
+  { hydrate, props, context }: Omit<RenderRequest, 'format'>,
+  includeScripts = hydrate,
+) {
+  let head = teleportHead ?? ''
+  for (const asset of assets) {
+    if (asset.tag === 'link') head += headEntryHtml(asset)
+    if (asset.tag === 'style') {
+      head += headEntryHtml({
+        ...asset,
+        content: (asset.content ?? '').replace(/<\/(style)/gi, '<\\/$1'),
+      })
+    }
+  }
+  if (hydrate) {
+    head += headEntryHtml(hydrationData('vueforge-props', props ?? {}))
+    if (context !== undefined)
+      head += headEntryHtml(hydrationData('vueforge-context', context))
+  }
+  if (includeScripts) {
+    for (const asset of assets.filter(({ tag }) => tag === 'script'))
+      head += headEntryHtml(asset)
+  }
+  return head
+}
+
 /** Formats a render as a JSON envelope or a complete HTML document. */
 export function formatRenderResponse(
   result: RenderResult,
@@ -106,11 +133,7 @@ export function formatRenderResponse(
     }
   }
 
-  const head = renderHeadEntries(
-    result,
-    request,
-    request.hydrate || development,
-  )
+  const head = renderHtmlHead(result, request, request.hydrate || development)
   return {
     format: 'html',
     body: renderDocument(head, result.content, document),

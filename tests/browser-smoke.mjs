@@ -63,24 +63,16 @@ async function startBackend(renderer, cwd) {
                 }),
                 signal: AbortSignal.timeout(5000),
               })
-              const result = await response.json()
-              assert.equal(response.status, 200, JSON.stringify(result))
-              const { head, content } = result
-              assert.equal(
-                typeof head,
-                'string',
-                'POST /render must return an HTML head',
-              )
-              assert.equal(
-                typeof content,
-                'string',
-                'POST /render must return HTML content',
-              )
-              assert.match(head, /<title>External renderer 2<\/title>/)
-              assert.match(content, /<button\b/)
+              const document = await response.text()
+              assert.equal(response.status, 200, document)
+              assert.match(document, /<title>External renderer 2<\/title>/)
+              assert.match(document, /<button\b/)
               res.setHeader('content-type', 'text/html; charset=utf-8')
               res.end(
-                `<!doctype html><html lang="en"><head><meta charset="utf-8"><link rel="icon" href="data:,">${head}</head><body><div id="app">${content}</div></body></html>`,
+                document.replace(
+                  '<head>',
+                  '<head><meta charset="utf-8"><link rel="icon" href="data:,">',
+                ),
               )
             } catch (error) {
               next(error)
