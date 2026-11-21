@@ -1,15 +1,20 @@
 import {
   MAX_CONCURRENT_RENDERS,
+  MAX_RENDER_BYTES,
   RENDER_TIMEOUT_MS,
   RenderBusyError,
   RenderTimeoutError,
+  RenderOutputLimitError,
   type RenderLimits,
 } from './render-capacity.js'
-import type { Render } from './renderer.js'
+import type { Render } from '../render/renderer.js'
 import { normalizeRenderError } from './render-error.js'
 import { renderErrorPage } from './render-error-page.js'
 import { RenderInputError, parseRenderRequest } from '../render/request.js'
-import { formatRenderResponse } from '../render/result.js'
+import {
+  formatRenderResponse,
+  formattedResponseBytes,
+} from '../render/result.js'
 import type { RenderOutputFormat } from '../render/request.js'
 import type { DocumentOptions } from '../render/document.js'
 import Negotiator from 'negotiator'
@@ -129,6 +134,13 @@ function errorResponse(
       body: { error: error.message },
     })
   }
+  if (error instanceof RenderOutputLimitError) {
+    return Promise.resolve({
+      status: 413,
+      headers: { 'Content-Type': 'application/json; charset=utf-8' },
+      body: { error: error.message },
+    })
+  }
   if (error instanceof RenderInputError) {
     return Promise.resolve({
       status: 400,
@@ -175,6 +187,7 @@ export function createRenderHandler(
     interruptible = false,
     defaultFormat = 'json',
     document,
+    maxOutputBytes = MAX_RENDER_BYTES,
     ...options
   }: RenderHandlerOptions = {},
 ) {
@@ -211,6 +224,9 @@ export function createRenderHandler(
           : { development: options.development }),
       }
       const response = formatRenderResponse(result, input, formatOptions)
+      if (formattedResponseBytes(response) > maxOutputBytes) {
+        throw new RenderOutputLimitError(maxOutputBytes)
+      }
       return {
         status: 200,
         headers: {

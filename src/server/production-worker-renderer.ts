@@ -9,7 +9,7 @@ import {
   RenderTimeoutError,
   type RenderLimits,
 } from './render-capacity.js'
-import type { AppRender } from './renderer.js'
+import type { AppRender } from '../render/renderer.js'
 
 interface Slot {
   worker: Worker
@@ -99,7 +99,6 @@ export async function productionWorkerRenderer(
     await Promise.all([...slots].map(stop))
   }
 
-  // Check that the compiled entry loads before opening the HTTP listener.
   try {
     await ask(start(), undefined)
   } catch (error) {

@@ -7,7 +7,7 @@ import type { Manifest } from 'vite'
 
 import { clientAssetsFile, isClientAsset } from '../client-assets.js'
 import type { HeadTag } from '../render/head.js'
-import { renderFrom, type AppRender, type Render } from './renderer.js'
+import { renderFrom, type AppRender, type Render } from '../render/renderer.js'
 
 function clientMiddleware(
   clientDir: string,

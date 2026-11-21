@@ -3,11 +3,11 @@ import type { Server } from 'node:http'
 import { hostValidationMiddleware } from 'host-validation-middleware'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 
-import { resolveAppSource } from '../config.js'
+import { resolveAppSource } from '../config/source.js'
 import type { VueForgeConfig } from '../index.js'
 import { developmentAssets } from '../vite/development-assets.js'
 import { serverEntry, vueViteConfig } from '../vite/vue-app.js'
-import { renderFrom, type Render } from './renderer.js'
+import { renderFrom, type Render } from '../render/renderer.js'
 
 export async function developmentRenderer(
   root: string,
@@ -62,6 +62,7 @@ export async function developmentRenderer(
   const { allowedHosts } = vite.config.server
   return {
     render,
+    allowedHosts,
     hostGuard:
       allowedHosts === true
         ? undefined

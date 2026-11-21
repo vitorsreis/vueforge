@@ -6,7 +6,7 @@ import {
   createRenderHandler,
   type RenderHandlerOptions,
 } from './render-handler.js'
-import type { Render } from './renderer.js'
+import type { Render } from '../render/renderer.js'
 
 type RenderRouteOptions = RenderHandlerOptions
 

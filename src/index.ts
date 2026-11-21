@@ -96,22 +96,18 @@ interface ProjectOptions {
   vite?: UserConfig
 }
 
-type AppSource =
-  | { template: string | Component; entry?: never }
-  | { template?: never; entry: string }
-  | { template?: never; entry?: never }
+/** Vue component, inline SFC, or project-relative source path. */
+export type VueForgeSource = string | Component
 
 /**
  * Project settings read from the default export of `vueforge.config.ts`.
  *
- * Choose exactly one source when overriding the default:
+ * `source` selects the Vue application source. It accepts an inline SFC, an
+ * imported component, a `.vue` component path, or an app factory module path.
  *
- * - `entry` selects a project-relative `.vue` component or app factory module.
- * - `template` supplies an inline Vue SFC or an imported Vue component.
- *
- * When all source properties are omitted, VueForge uses `src/App.vue`.
+ * When `source` is omitted, VueForge uses `src/App.vue`.
  */
-export type VueForgeConfig = ProjectOptions & AppSource
+export type VueForgeConfig = ProjectOptions & { source?: VueForgeSource }
 
 /**
  * Provides type checking and editor completion for a VueForge configuration.
@@ -126,6 +122,7 @@ export type VueForgeConfig = ProjectOptions & AppSource
  * import { defineConfig } from '@vitorsreis/vueforge'
  *
  * export default defineConfig({
+ *   source: 'src/App.vue',
  *   port: 4300,
  *   tempDir: '.cache/vueforge',
  *   build: { outDir: 'dist/vueforge' },

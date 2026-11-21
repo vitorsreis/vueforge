@@ -13,14 +13,14 @@ import {
 
 const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
 
-test('resolves entry paths as components when they target SFC files', async (t) => {
+test('resolves source paths as components when they target SFC files', async (t) => {
   await mkdir(scratch, { recursive: true })
   const root = await mkdtemp(join(scratch, 'config-contract-'))
   t.after(() => rm(root, { recursive: true, force: true }))
   await mkdir(join(root, 'src'))
   await writeFile(join(root, 'src/App.vue'), '<template><p>App</p></template>')
 
-  assert.deepEqual(await resolveAppSource(root, { entry: 'src/App.vue' }), {
+  assert.deepEqual(await resolveAppSource(root, { source: 'src/App.vue' }), {
     kind: 'component',
     url: '/src/App.vue',
   })
@@ -37,7 +37,7 @@ test('loads an imported Vue component from vueforge.config.ts', async (t) => {
   )
   await writeFile(
     join(root, 'vueforge.config.ts'),
-    "import Home from './src/Home.vue'\nexport default { template: Home }",
+    "import Home from './src/Home.vue'\nexport default { source: Home }",
   )
 
   const config = await loadProjectConfig(root, {

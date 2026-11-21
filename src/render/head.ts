@@ -37,7 +37,6 @@ export function headEntriesFromHtml(html: string): HeadEntry[] {
     }
 
     if (!defaultTreeAdapter.isElementNode(node)) {
-      // Preserve Vue's hydration anchors and keep text HTML-encoded.
       entries.push({ html: serializeOuter(node) })
       continue
     }

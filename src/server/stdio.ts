@@ -91,7 +91,6 @@ async function writeLine(output: Writable, value: unknown): Promise<void> {
     output.once('error', reject)
     output.write(line, (error) => {
       if (error) {
-        // Writable emits the same failure after invoking the write callback.
         setImmediate(() => output.off('error', reject))
         reject(error)
         return

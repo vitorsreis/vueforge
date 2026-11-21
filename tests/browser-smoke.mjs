@@ -263,18 +263,18 @@ try {
       : { channel: 'chrome' },
   )
   try {
-    for (const [source, path] of [
-      ['entry', 'src/entry.ts'],
-      ['file', 'src/App.vue'],
+    for (const [name, path] of [
+      ['factory', 'src/entry.ts'],
+      ['component', 'src/App.vue'],
     ]) {
       await cp(fixture, join(cwd, 'src'), { recursive: true })
       await writeFile(
         join(cwd, 'vueforge.config.ts'),
-        `export default { ${source}: ${JSON.stringify(path)} }`,
+        `export default { source: ${JSON.stringify(path)} }`,
       )
       // Production runs before the development check edits the fixture's styles.
-      await checkBrowser(browser, cwd, false, source)
-      await checkBrowser(browser, cwd, true, source)
+      await checkBrowser(browser, cwd, false, name)
+      await checkBrowser(browser, cwd, true, name)
     }
   } finally {
     await browser.close()

@@ -1,4 +1,4 @@
-import { lstat, unlink } from 'node:fs/promises'
+import { chmod, lstat, unlink } from 'node:fs/promises'
 import type { Server } from 'node:http'
 
 export interface TcpTransport {
@@ -124,6 +124,8 @@ export async function listenHttpServer(
   try {
     if (transport.kind === 'unix')
       socket = await captureUnixSocket(transport.path)
+    if (transport.kind === 'unix' && process.platform !== 'win32')
+      await chmod(transport.path, 0o600)
   } catch (error) {
     await new Promise<void>((resolve) => {
       server.close(() => {

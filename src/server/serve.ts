@@ -2,24 +2,21 @@ import { createRequire } from 'node:module'
 
 import express from 'express'
 
-import {
-  resolveBuildOutputDir,
-  resolveRenderLimits,
-  resolveServerTransport,
-} from '../config.js'
+import { resolveBuildOutputDir, resolveRenderLimits } from '../config.js'
+import { resolveServerTransport } from './transport-config.js'
 import type { VueForgeConfig } from '../index.js'
-import type { Render } from './renderer.js'
+import type { Render } from '../render/renderer.js'
 import { createRenderHandler } from './render-handler.js'
 import { developmentRenderer } from './development.js'
 import { productionRenderer } from './production.js'
 import { productionWorkerRenderer } from './production-worker-renderer.js'
 import { renderRoute } from './render-route.js'
-import { createNodeServer, startNodeAdapter } from './node-adapter.js'
+import { createNodeServer, startNodeAdapter } from './adapter/node.js'
 import {
   hasBunRuntime,
   startBunAdapter,
   startBunProxyAdapter,
-} from './bun-adapter.js'
+} from './adapter/bun.js'
 import { readJsonRequestBody } from './http-render-input.js'
 import { serveStdio } from './stdio.js'
 import type { ServerTransport } from './transports.js'
@@ -39,6 +36,7 @@ interface RenderService {
   middleware: express.RequestHandler | undefined
   close: (() => Promise<void> | void) | undefined
   hostGuard: express.RequestHandler | undefined
+  allowedHosts: true | readonly string[]
 }
 
 function transportFromOptions(
@@ -261,6 +259,7 @@ export async function serveProject(
         ...(config.shutdownTimeoutMs === undefined
           ? {}
           : { shutdownTimeoutMs: config.shutdownTimeoutMs }),
+        allowedHosts: renderer.allowedHosts,
       })
       const close = async () => {
         process.off('SIGINT', signalHandler)
@@ -351,6 +350,7 @@ export async function serveProject(
         (entry) => productionWorkerRenderer(entry, limits),
       )),
       hostGuard: undefined,
+      allowedHosts: true,
     }
   }
 

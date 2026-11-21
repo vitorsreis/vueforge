@@ -8,7 +8,10 @@ import {
   resolveRenderLimits,
 } from '../config.js'
 import { parseRenderRequest } from '../render/request.js'
-import { formatRenderResponse } from '../render/result.js'
+import {
+  formatRenderResponse,
+  formattedResponseBytes,
+} from '../render/result.js'
 import { productionRenderer } from '../server/production.js'
 
 async function readRequest(maxRequestBytes: number): Promise<unknown> {
@@ -50,7 +53,6 @@ export async function renderProject(
   configFile?: string,
   limitsOverride?: { maxRequestBytes?: number },
 ) {
-  // Keep stdout for the response even if project code logs after rendering.
   const writeResponse = process.stdout.write.bind(process.stdout)
   process.stdout.write = process.stderr.write.bind(process.stderr)
 
@@ -76,6 +78,11 @@ export async function renderProject(
     outputFormat === undefined ? request : { ...request, format: outputFormat },
     config.document === undefined ? {} : { document: config.document },
   )
+  if (formattedResponseBytes(response) > limits.maxOutputBytes) {
+    throw new Error(
+      `Vue SSR response exceeds the ${String(limits.maxOutputBytes)} byte output limit.`,
+    )
+  }
   writeResponse(
     response.format === 'html'
       ? response.body

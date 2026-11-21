@@ -1,5 +1,6 @@
-import type { HttpTransport } from './transports.js'
+import type { HttpTransport } from '../transports.js'
 import { isAbsolute, resolve } from 'node:path'
+import { isHostAllowed } from 'host-validation-middleware'
 
 interface BunServer {
   stop(closeActiveConnections?: boolean): Promise<void>
@@ -43,6 +44,7 @@ export interface BunProxyAdapterOptions {
   targetOrigin: string
   ssl?: { cert: string; key: string; ca?: string }
   shutdownTimeoutMs?: number
+  allowedHosts?: true | readonly string[]
 }
 
 export function hasBunRuntime() {
@@ -104,6 +106,7 @@ export function startBunProxyAdapter({
   targetOrigin,
   ssl,
   shutdownTimeoutMs = 5000,
+  allowedHosts = true,
 }: BunProxyAdapterOptions) {
   const bun = (globalThis as typeof globalThis & { Bun?: BunRuntime }).Bun
   if (!bun) throw new Error('Bun runtime is required for the Bun HTTP adapter.')
@@ -120,6 +123,13 @@ export function startBunProxyAdapter({
 
   const server = bun.serve({
     fetch: (request: Request, current: BunProxyServer) => {
+      const host = request.headers.get('host') ?? undefined
+      if (allowedHosts !== true && !isHostAllowed(host, allowedHosts)) {
+        return new Response(
+          `Blocked request. This host (${JSON.stringify(host?.replace(/:\d+$/, '') ?? '')}) is not allowed.`,
+          { status: 403 },
+        )
+      }
       if (request.headers.get('upgrade')?.toLowerCase() === 'websocket') {
         const path = new URL(request.url).pathname + new URL(request.url).search
         if (current.upgrade(request, { data: { path } })) return undefined

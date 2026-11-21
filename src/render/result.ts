@@ -1,4 +1,4 @@
-import type { Render } from '../server/renderer.js'
+import type { Render } from './renderer.js'
 import { headEntriesFromHtml, headEntryHtml } from './head.js'
 import type { HeadEntry, HeadTag } from '../index.js'
 import type { RenderRequest } from './request.js'
@@ -18,6 +18,14 @@ export type FormattedRenderResponse =
 export interface FormatRenderOptions {
   document?: DocumentOptions
   development?: boolean
+}
+
+export function formattedResponseBytes(response: FormattedRenderResponse) {
+  const body =
+    typeof response.body === 'string'
+      ? response.body
+      : JSON.stringify(response.body)
+  return new TextEncoder().encode(body).byteLength
 }
 
 function hydrationData(id: string, value: Record<string, unknown>): HeadTag {
@@ -65,7 +73,6 @@ function renderHeadEntries(
     if (asset.tag === 'style') {
       entries.push({
         ...asset,
-        // A CSS escape keeps the slash literal without ending the HTML element.
         content: (asset.content ?? '').replace(/<\/(style)/gi, '<\\/$1'),
       })
     }

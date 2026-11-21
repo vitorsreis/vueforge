@@ -19,7 +19,7 @@ test('development compiles inline Vue templates with relative imports and CSS mo
     const renderer = await developmentRenderer(
       root,
       {
-        template: `<script setup>
+        source: `<script setup>
 import Child from './Child.vue'
 defineProps(['context'])
 </script>

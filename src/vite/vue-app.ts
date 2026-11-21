@@ -5,7 +5,7 @@ import vue from '@vitejs/plugin-vue'
 import { normalizePath } from 'vite'
 import type { InlineConfig, Plugin, UserConfig } from 'vite'
 
-import type { AppSource } from '../config.js'
+import type { AppSource } from '../config/source.js'
 
 export const clientEntry = 'virtual:vueforge-client'
 export const serverEntry = 'virtual:vueforge-server'

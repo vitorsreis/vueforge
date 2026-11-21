@@ -107,7 +107,7 @@ const entry = [
 for (const { name, config, files, content } of [
   {
     name: 'component entry',
-    config: { entry: './src/Chosen.vue' },
+    config: { source: './src/Chosen.vue' },
     files: {
       'src/Chosen.vue': [
         '<script>',
@@ -124,20 +124,20 @@ for (const { name, config, files, content } of [
   },
   {
     name: 'template',
-    config: { template },
+    config: { source: template },
     files: { 'LocalChild.vue': '<template><span>Welcome</span></template>' },
     content:
       /^<main class="inline" data-v-\w+><span(?: data-v-\w+)?>Welcome<\/span>Hello Ada<\/main>$/,
   },
   {
     name: 'entry',
-    config: { entry: './src/custom-entry.ts' },
+    config: { source: './src/custom-entry.ts' },
     files: { 'src/custom-entry.ts': entry },
     content: /^<h1>Hello Ada<\/h1>$/,
   },
   {
     name: 'named Vue SSR factory',
-    config: { entry: './src/app.ts' },
+    config: { source: './src/app.ts' },
     files: {
       'src/app.ts': [
         "import { createSSRApp, h } from 'vue'",
@@ -205,10 +205,9 @@ for (const { name, config, files, content } of [
 test('validates configured render sources before building', async (t) => {
   const cwd = await project(t, {})
   for (const [config, expected] of [
-    [{ entry: './src/App.vue', template }, /entry.*template|template.*entry/i],
-    [{ entry: ' ' }, /\bentry\b/i],
-    [{ template: false }, /\btemplate\b/i],
-    [{ entry: [] }, /\bentry\b/i],
+    [{ source: ' ' }, /\bsource\b/i],
+    [{ source: false }, /\bsource\b/i],
+    [{ source: [] }, /\bsource\b/i],
   ]) {
     await writeFile(
       join(cwd, 'vueforge.config.ts'),
@@ -274,7 +273,7 @@ test(
   async (t) => {
     const cwd = await project(
       t,
-      { entry: './src/custom-entry.ts' },
+      { source: './src/custom-entry.ts' },
       { 'src/custom-entry.ts': entry },
     )
     await serve(cwd, async (post) => {
