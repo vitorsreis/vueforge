@@ -7,7 +7,7 @@ external backend.
 backend
   -> HTTP, Unix socket, or stdio transport
   -> request parser and format negotiation
-  -> configured template catalog or entry factory
+  -> configured main source or template catalog
   -> Vite SSR runner in development / built worker pool in production
   -> JSON fragments or a complete HTML document
 ```
@@ -17,9 +17,9 @@ loading, and caching decisions.
 
 ## Source model
 
-`template` resolves one component or inline SFC. `entry` resolves a module that
-creates an app for each request. `templates` resolves a finite catalog of named
-components. The request can select only a name from that catalog.
+`main` resolves one component, inline SFC, entry module, directory, pattern,
+descriptor, named catalog, or factory. The request can select only a name from
+a configured catalog.
 
 All application instances are created per render. The renderer does not retain
 request props or context between calls. Entry modules must also create routers,
@@ -42,7 +42,7 @@ finally the SSR content. `parse5` converts top-level Teleport elements into
 structured tags. Vue marker comments are removed from non-hydrated responses so
 backends do not need to understand Vue's internal SSR markers.
 
-`format: 'json'` returns `{ head, content }`. `format: 'html'` wraps the same
+`?format=json` returns `{ head, content }`. `?format=html` wraps the same
 fragments with the configured document options.
 
 ## Public package boundary

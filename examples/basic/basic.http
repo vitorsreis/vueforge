@@ -1,0 +1,42 @@
+@endpoint = http://127.0.0.1:9901
+
+### Simple example with default JSON response
+POST {{ endpoint }}/render
+Content-Type: application/json; charset=utf-8
+
+{
+  "props": {
+    "title": "Hello World"
+  }
+}
+
+### Simple example with HTML response with Accept header
+POST {{ endpoint }}/render
+Accept: text/html
+Content-Type: application/json; charset=utf-8
+
+{
+  "props": {
+    "title": "Hello World"
+  }
+}
+
+### Simple example with HTML response with `format` query parameter
+POST {{ endpoint }}/render?format=html
+Content-Type: application/json; charset=utf-8
+
+{
+  "props": {
+    "title": "Hello World"
+  }
+}
+
+### Simple example with HTML response with `hydrate` set to true
+POST {{ endpoint }}/render?format=html&hydrate=1
+Content-Type: application/json; charset=utf-8
+
+{
+  "props": {
+    "title": "Hello World"
+  }
+}

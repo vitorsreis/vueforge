@@ -1,6 +1,6 @@
 # Factory example
 
-This example uses `entry: 'src/entry.ts'`. Vueforge calls the factory for each
+This example uses `main: 'src/entry.ts'`. Vueforge calls the factory for each
 render, so request context can be provided without shared module state.
 
 ```sh

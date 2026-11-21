@@ -61,14 +61,14 @@ npx vueforge serve
 
 The production server reads `build.outDir`, which defaults to `dist`.
 
-## 6. Choose an entry or catalog
+## 6. Choose an application source
 
-Use `entry: 'src/entry.ts'` when the app needs a request-scoped router, store,
-or plugin setup. Use `templates: 'src/templates'` when the backend chooses a
-named `.vue` view per request.
+Use `main: 'src/entry.ts'` when the app needs request-scoped plugins or stores.
+Use `main: 'src/catalog'` when the backend chooses a named `.vue` view.
 
 ```json
-{ "template": "invoice", "props": { "number": "A-42" } }
+POST /render?template=invoice
+{ "props": { "number": "A-42" } }
 ```
 
 See [configuration](configuration.md) for inline SFCs, imported components,

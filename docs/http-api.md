@@ -8,13 +8,12 @@ HTML document.
 
 Send one UTF-8 JSON object with `Content-Type: application/json`.
 
-| Field      | Type             | Description                                                        |
-| ---------- | ---------------- | ------------------------------------------------------------------ |
-| `props`    | object           | Props passed to the configured component or entry.                 |
-| `context`  | object           | Request-scoped data passed to an entry factory or `context` prop.  |
-| `template` | string           | Named template selected from the configured `templates` catalog.   |
-| `format`   | `json` or `html` | Response representation. Defaults to JSON or `Accept` negotiation. |
-| `hydrate`  | boolean          | Includes browser assets and public hydration data.                 |
+| Field/query | Type             | Description                                                        |
+| ----------- | ---------------- | ------------------------------------------------------------------ |
+| body        | object           | Complete request context passed to the Vue app.                    |
+| `template`  | query string     | Named template selected from a configured catalog.                 |
+| `format`    | `json` or `html` | Response representation. Defaults to JSON or `Accept` negotiation. |
+| `hydrate`   | query boolean    | Includes browser assets and public hydration data.                 |
 
 ```sh
 curl --request POST \
@@ -28,12 +27,12 @@ Catalog example:
 ```sh
 curl --request POST \
   --header 'Content-Type: application/json' \
-  --data '{"template":"invoice","props":{"number":"A-42"}}' \
-  http://127.0.0.1:9901/render
+  --data '{"props":{"number":"A-42"}}' \
+  'http://127.0.0.1:9901/render?template=invoice'
 ```
 
 The request body is bounded by `limits.maxRequestBytes`. `template` is required
-when `templates` is configured and must match a configured name.
+when `catalog` is configured and must match a configured name.
 
 ## JSON response
 
@@ -76,7 +75,7 @@ The configured `document` options control the doctype, `<html>` attributes,
 
 The server chooses the format in this order:
 
-1. `format` in the request body.
+1. `format` in the query string.
 2. The highest-quality supported media type in `Accept`.
 3. `format` from `vueforge.config.ts`.
 4. JSON.
@@ -86,9 +85,9 @@ that excludes both returns `406`.
 
 ## Hydration
 
-Use `hydrate: true` when the backend inserts the response into a browser page.
-Props, context, and the selected template name are serialized into JSON script
-tags and are therefore public to the browser. Keep the returned head entries in
+Use `?hydrate` when the backend inserts the response into a browser page. The
+complete request context and selected template name are serialized into one
+`<script id="__VUEFORGE__">` tag and are therefore public to the browser. Keep the returned head entries in
 `<head>` and the content inside the configured root element.
 
 ## Other routes

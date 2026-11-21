@@ -4,16 +4,16 @@ Vueforge is a renderer service. Your backend keeps ownership of routes, authenti
 
 ## Render a page
 
-Send the data required by the configured Vue template or entry to `POST /render`:
+Send the complete context required by the configured Vue source to `POST /render`:
 
 ```json
 {
   "props": { "title": "Orders" },
-  "context": { "locale": "en-US" }
+  "locale": "en-US"
 }
 ```
 
-Use `format: "html"` when the backend wants Vueforge to return the complete document. Use `format: "json"` when the backend composes the document itself. When `format` is omitted, the server negotiates with `Accept`, then configuration, then defaults to JSON.
+Use `?format=html` when the backend wants Vueforge to return the complete document. Use `?format=json` when the backend composes the document itself. When `format` is omitted, the server negotiates with `Accept`, then configuration, then defaults to JSON.
 
 The caller composes the response document:
 
@@ -27,18 +27,19 @@ backend route
 
 The JSON response is fragment-oriented. The HTML response uses the configured `document` options for doctype, root id, attributes, and extra head entries.
 
-When `templates` is configured, include the selected name in the request:
+When a catalog is configured, include the selected name in the query:
 
 ```json
 {
-  "template": "invoice",
   "props": { "number": "A-42" }
 }
 ```
 
+Use `/render?template=invoice` for this request.
+
 ## Hydrate in the browser
 
-Set `hydrate` to `true` and preserve the returned head nodes in the document:
+Set `?hydrate` and preserve the returned head nodes in the document:
 
 ```html
 <!doctype html>
@@ -52,7 +53,7 @@ Set `hydrate` to `true` and preserve the returned head nodes in the document:
 </html>
 ```
 
-The response contains serialized props and context plus the browser entry. The browser entry creates the same app and hydrates the configured `document.rootId`, which defaults to `app`. Keep Teleport anchor comments in `<head>` when hydration is enabled.
+The response contains the complete serialized context in one `__VUEFORGE__` script tag plus the browser entry. The browser entry creates the same app and hydrates the configured `document.rootId`, which defaults to `app`. Keep Teleport anchor comments in `<head>` when hydration is enabled.
 
 All request props and context are public when hydration is enabled. Do not send credentials, private tokens, or server-only records in those fields.
 
@@ -81,9 +82,9 @@ Deploy `<build.outDir>/client` and `<build.outDir>/server` from the same build. 
 
 ## Request data and app factories
 
-For a configured component or inline SFC, declare the props that the root component accepts. The request `context` is available through a declared `context` prop.
+For a configured component or inline SFC, declare the props that the root component accepts. Vueforge forwards `context.props` to those props.
 
-For a configured factory module path in `entry`, Vueforge calls `createApp(context, props)` for every render. Use the factory to create request-scoped router and store instances and to select the data that enters the app.
+For a configured factory module path in `main`, Vueforge calls `createApp(context)` for every render. Use the factory to create request-scoped router and store instances and to select the data that enters the app.
 
 ```ts
 import { createSSRApp } from 'vue'

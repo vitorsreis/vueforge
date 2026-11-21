@@ -1,6 +1,7 @@
 # Basic example
 
-This project uses `src/App.vue` as its `template` and accepts a `title` prop.
+This project uses `src/App.vue` as its `main` component and reads `title` from
+`context.props`.
 
 ```sh
 npx vueforge serve --dev

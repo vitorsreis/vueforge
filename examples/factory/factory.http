@@ -1,21 +1,7 @@
 ### Simple example with JSON response
 POST http://127.0.0.1:9901/render
-Accept: application/json
 Content-Type: application/json; charset=utf-8
 
 {
-  "context": {
-    "name": "Ada"
-  }
-}
-
-### Simple example with HTML response
-POST http://127.0.0.1:9901/render
-Accept: text/html
-Content-Type: application/json; charset=utf-8
-
-{
-  "context": {
-    "name": "Ada"
-  }
+  "name": "Ada"
 }

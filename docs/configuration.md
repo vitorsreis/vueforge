@@ -1,8 +1,8 @@
 # Configuration and CLI
 
 Vueforge is zero-config when a project contains `src/App.vue`. Add
-`vueforge.config.ts` when the project needs a different template, an app entry,
-named templates, server settings, or build settings.
+`vueforge.config.ts` when the project needs a different `main` source, server
+settings, or build settings.
 
 ## Commands
 
@@ -21,17 +21,18 @@ Global options are `-r, --root`, `-c, --config`, `-h, --help`, and
 
 ## Application selection
 
-Configure exactly one of `template`, `entry`, or `templates`.
+Configure one `main` source. It can be a component, inline SFC, entry module,
+directory, regular expression, descriptor, named object, or factory.
 
-### One template
+### Component or inline SFC
 
-`template` accepts a `.vue` path, an imported component, or an inline SFC.
+`main` accepts a `.vue` path, an imported component, or an inline SFC.
 
 ```ts
 import { defineConfig } from '@vitorsreis/vueforge'
 
 export default defineConfig({
-  template: 'src/pages/Home.vue',
+  main: 'src/pages/Home.vue',
 })
 ```
 
@@ -39,22 +40,22 @@ export default defineConfig({
 import Home from './src/pages/Home.vue'
 import { defineConfig } from '@vitorsreis/vueforge'
 
-export default defineConfig({ template: Home })
+export default defineConfig({ main: Home })
 ```
 
 ```ts
 export default {
-  template: '<template><h1>{{ title }}</h1></template>',
+  main: '<template><h1>{{ title }}</h1></template>',
 }
 ```
 
-When omitted, `template` defaults to `src/App.vue`.
+When omitted, `main` defaults to `src/App.vue`.
 
-### App entry
+### App factory
 
-`entry` points to a module that creates a fresh Vue app for each request. The
+An entry module in `main` creates a fresh Vue app for each request. The
 module exports `createApp` or a default factory. The factory receives
-`(context, props)` and may return the app or `{ app }`.
+`(context)` and may return the app or `{ app }`.
 
 ```ts
 // src/entry.ts
@@ -62,8 +63,8 @@ import { createSSRApp } from 'vue'
 import { createVueforgeApp } from '@vitorsreis/vueforge'
 import App from './App.vue'
 
-export default createVueforgeApp((context, props) => {
-  const app = createSSRApp(App, props)
+export default createVueforgeApp((context) => {
+  const app = createSSRApp(App, context.props)
   app.provide('requestContext', context)
   return app
 })
@@ -71,33 +72,35 @@ export default createVueforgeApp((context, props) => {
 
 ```ts
 // vueforge.config.ts
-export default { entry: 'src/entry.ts' }
+export default { main: 'src/entry.ts' }
 ```
 
 Use a factory for request-scoped routers, stores, and plugins. Do not keep
 request data in module-level mutable state.
 
-### Named templates
+### Template catalogs
 
-`templates` can be a directory containing `.vue` files or a named object. A
-request must include `template` when this option is used. Directory names are
+`main` can be a directory containing `.vue` files, a regular expression, a
+descriptor, or a named object. A request must include `template` in the query
+when this option is used. Directory names are
 relative to the project root and become template names without `.vue`.
 
 ```ts
 export default {
-  templates: 'src/pages',
+  main: 'src/pages',
 }
 ```
 
 ```json
-{ "template": "invoice", "props": { "number": "A-42" } }
+POST /render?template=invoice
+{ "props": { "number": "A-42" } }
 ```
 
 ```ts
 import Invoice from './src/pages/Invoice.vue'
 
 export default {
-  templates: {
+  main: {
     home: 'src/pages/Home.vue',
     invoice: Invoice,
     inline: '<template><p>Inline</p></template>',
@@ -189,7 +192,7 @@ export default {
 
 ## HTML documents
 
-`format: 'html'` returns a complete document. Configure the wrapper with
+`?format=html` returns a complete document. Configure the wrapper with
 `document`.
 
 ```ts
@@ -203,7 +206,7 @@ export default {
 }
 ```
 
-Use `format: 'json'` when the backend owns document composition. JSON is compact
+Use `?format=json` when the backend owns document composition. JSON is compact
 by default. Add `?pretty=1` to HTTP requests or `--pretty` to the CLI when a
 human-readable JSON response is needed.
 

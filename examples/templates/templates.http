@@ -1,22 +1,18 @@
-### Render a named catalog template as JSON
-POST http://127.0.0.1:9901/render
-Accept: text/html
+### Render home as HTML
+POST http://127.0.0.1:9901/render?format=html&template=home
 Content-Type: application/json; charset=utf-8
 
 {
-  "template": "home",
   "props": {
     "title": "Welcome to the catalog"
   }
 }
 
-### Render a named catalog template as JSON
-POST http://127.0.0.1:9901/render
-Accept: text/html
+### Render invoice as HTML
+POST http://127.0.0.1:9901/render?format=html&template=invoice
 Content-Type: application/json; charset=utf-8
 
 {
-  "template": "invoice",
   "props": {
     "number": "A-42",
     "total": "R$ 129,90"

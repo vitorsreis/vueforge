@@ -66,14 +66,14 @@ npx vueforge serve
 import { defineConfig } from '@vitorsreis/vueforge'
 
 export default defineConfig({
-  template: 'src/App.vue',
+  main: 'src/App.vue',
   server: { port: 9901 },
 })
 ```
 
-Use `entry` for a request-scoped Vue app factory or `templates` for Twig-like
-named selection from the render request. The [configuration guide](docs/configuration.md)
-documents both forms and their limits.
+Use `main: 'src/entry.ts'` for a request-scoped Vue app factory. Use a directory,
+regular expression, or named object for Twig-like template selection. The
+[configuration guide](docs/configuration.md) documents the source forms.
 
 ## Documentation
 
