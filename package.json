@@ -24,7 +24,7 @@
     "vueforge": "bin/vueforge"
   },
   "scripts": {
-    "prebuild": "node scripts/clean-build.mjs",
+    "prebuild": "node -e \"require('node:fs').rmSync('dist', { recursive: true, force: true })\"",
     "build": "node node_modules/typescript7/bin/tsc -p tsconfig.build.json",
     "typecheck": "node node_modules/typescript7/bin/tsc --noEmit",
     "lint": "eslint . --max-warnings=0",
