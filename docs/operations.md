@@ -44,8 +44,8 @@ Vueforge does not cache rendered HTML. Add caching in the backend only when the 
 ## Transports
 
 TCP is the default persistent transport. Use `--unix <path>` or `server.unix` in
-the configuration for a Unix socket. Use `--stdio` for newline-delimited JSON on
-the CLI. Stdio cannot be combined with a Unix socket. Configure
+the configuration for a Unix socket. Use `--stdio` or `server.stdio` for
+newline-delimited JSON. Stdio cannot be combined with a Unix socket. Configure
 `server.ssl: { cert, key, ca? }` for TLS on TCP.
 
 ## Limits
