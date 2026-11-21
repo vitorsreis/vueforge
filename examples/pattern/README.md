@@ -11,7 +11,9 @@ The file `src/home.page.vue` becomes the request template name
 
 ```sh
 npx vueforge serve --dev
+```
 
+```sh
 curl -X POST 'http://127.0.0.1:9901/render?template=home.page' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"title":"Home"}}'
@@ -19,3 +21,22 @@ curl -X POST 'http://127.0.0.1:9901/render?template=home.page' \
 
 The regular expression and the selected files are resolved by Vueforge before
 requests are handled. Request data stays in the context body.
+
+## Unknown template
+
+Requesting a name that does not match a file selected by the pattern is
+rejected before Vue SSR runs:
+
+```sh
+curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The server returns `400` and lists the matching template names:
+
+```json
+{
+  "error": "Unknown template \"missing\". Choose one of: home.page."
+}
+```
