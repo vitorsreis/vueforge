@@ -17,8 +17,10 @@ export default createVueforgeApp((context) => {
 
 ```sh
 npx vueforge serve --dev
+```
 
-curl -X POST http://127.0.0.1:9901/render \
+```sh
+curl -X POST http://127.0.0.1:9901/render?pretty=1 \
   -H 'Content-Type: application/json' \
   -d '{"props":{"name":"Ada"}}'
 ```

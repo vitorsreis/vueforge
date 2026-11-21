@@ -15,7 +15,7 @@ npx vueforge serve --dev
 Render JSON through the default endpoint:
 
 ```sh
-curl -X POST http://127.0.0.1:9901/render \
+curl -X POST http://127.0.0.1:9901/render?pretty=1 \
   -H 'Content-Type: application/json' \
   -d '{"props":{"title":"Hello World"}}'
 ```

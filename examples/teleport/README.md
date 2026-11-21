@@ -8,8 +8,10 @@ returns the resulting elements as structured `head` entries in JSON mode.
 
 ```sh
 npx vueforge serve --dev
+```
 
-curl -X POST 'http://127.0.0.1:9901/render' \
+```sh
+curl -X POST 'http://127.0.0.1:9901/render?pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"title":"Orders","description":"Order list"}}'
 ```

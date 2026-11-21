@@ -34,20 +34,16 @@ npx vueforge serve --dev
 Render from any backend:
 
 ```sh
-curl --request POST \
-  --header 'Content-Type: application/json' \
-  --data '{"props":{"title":"Hello"}}' \
-  http://127.0.0.1:9901/render
+curl -X POST http://127.0.0.1:9901/render \
+  -H 'Content-Type: application/json' \
+  -d '{"props":{"title":"Hello"}}'
 ```
 
 ```json
 {
   "head": [
     { "tag": "script", "attrs": { "type": "module", "src": "/@vite/client" } },
-    {
-      "tag": "script",
-      "attrs": { "type": "module", "src": "/@vueforge/client" }
-    }
+    { "tag": "script", "attrs": { "type": "module", "src": "/@vueforge/client" }}
   ],
   "content": "<h1>Hello</h1>"
 }

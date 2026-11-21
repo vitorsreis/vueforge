@@ -8,8 +8,10 @@ this component without becoming global CSS.
 
 ```sh
 npx vueforge serve --dev
+```
 
-curl -X POST 'http://127.0.0.1:9901/render?format=json' \
+```sh
+curl -X POST 'http://127.0.0.1:9901/render?format=json&pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"title":"Scoped card"}}'
 ```

@@ -13,7 +13,7 @@ npx vueforge serve --dev
 Render successfully first:
 
 ```sh
-curl -X POST 'http://127.0.0.1:9901/render' \
+curl -X POST 'http://127.0.0.1:9901/render?pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"fail":false}}'
 ```
@@ -21,7 +21,7 @@ curl -X POST 'http://127.0.0.1:9901/render' \
 Trigger the failure and request JSON diagnostics:
 
 ```sh
-curl -X POST 'http://127.0.0.1:9901/render?error=json' \
+curl -X POST 'http://127.0.0.1:9901/render?error=json&pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"fail":true}}'
 ```
