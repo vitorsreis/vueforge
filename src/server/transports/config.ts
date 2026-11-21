@@ -40,7 +40,7 @@ export function resolveServerTransport(
   } = {},
 ): ServerTransport {
   const unix = overrides.unix ?? config.server?.unix
-  const stdio = overrides.stdio ?? false
+  const stdio = overrides.stdio ?? config.server?.stdio ?? false
   const listener = listenOptions(
     config,
     overrides.host,

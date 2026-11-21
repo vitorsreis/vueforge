@@ -13,6 +13,7 @@ import {
   UnixSocketExistsError,
   validateTransportSelection,
 } from '../dist/server/transports/http.js'
+import { resolveServerTransport } from '../dist/server/transports/config.js'
 import { serveStdio } from '../dist/server/transports/stdio.js'
 
 test('validates mutually exclusive server transports', () => {
@@ -31,6 +32,23 @@ test('validates mutually exclusive server transports', () => {
   )
   assert.doesNotThrow(() =>
     validateTransportSelection({ host: '127.0.0.1', port: 9901 }),
+  )
+})
+
+test('resolves stdio from server configuration unless a CLI override is given', () => {
+  assert.deepEqual(
+    resolveServerTransport(process.cwd(), { server: { stdio: true } }),
+    { kind: 'stdio' },
+  )
+  assert.deepEqual(
+    resolveServerTransport(
+      process.cwd(),
+      { server: { stdio: true } },
+      {
+        stdio: false,
+      },
+    ),
+    { kind: 'tcp', host: '127.0.0.1', port: 9901 },
   )
 })
 

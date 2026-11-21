@@ -67,6 +67,8 @@ export interface ServerOptions {
   port?: number
   /** Unix socket path. */
   unix?: string
+  /** Use newline-delimited JSON on standard input and output. */
+  stdio?: boolean
   /** TLS certificate files for HTTPS. */
   ssl?: VueforgeSslOptions
   /** CORS policy. Defaults to allowing all origins without credentials. */

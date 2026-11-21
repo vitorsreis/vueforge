@@ -127,9 +127,9 @@ export default {
 ```
 
 The default transport is TCP on `127.0.0.1:9901`. Use `server.unix` for a Unix
-socket or the CLI `--stdio` option for newline-delimited JSON. These transports
-are mutually exclusive. `server.ssl` enables HTTPS with `key`, `cert`, and an
-optional `ca` file.
+socket or `server.stdio` for newline-delimited JSON. These transports are
+mutually exclusive. The CLI `--stdio` option overrides the configuration.
+`server.ssl` enables HTTPS with `key`, `cert`, and an optional `ca` file.
 
 CORS is enabled by default. Set `cors: false` to disable it, pass a string array
 to allow explicit origins, or pass the full options object.
