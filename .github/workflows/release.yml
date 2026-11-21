@@ -29,6 +29,7 @@ jobs:
         id: candidate
         env:
           HEAD_SHA: ${{ github.sha }}
+          RELEASE_REF: ${{ github.ref_name }}
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict'
@@ -42,6 +43,7 @@ jobs:
           const { name, version } = JSON.parse(manifest)
           assert.equal(name, '@vitorsreis/vueforge')
           assert.match(version, /^(0|[1-9]\d*)\.(0|[1-9]\d*)\.(0|[1-9]\d*)$/)
+          assert.equal(process.env.RELEASE_REF, `v${version}`, 'The pushed tag must match package.json')
           appendFileSync(process.env.GITHUB_OUTPUT, `commit=${commit}\ntag=v${version}\n`)
           JS
       - name: Verify signed tag on main
