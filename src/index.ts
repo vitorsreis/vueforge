@@ -119,8 +119,20 @@ interface ProjectOptions {
 /** Vue component, file path, or inline SFC accepted by `main`. */
 export type VueforgeTemplate = string | Component
 
-/** Request data passed to a Vueforge application factory. */
-export type VueforgeContext = Record<string, unknown>
+/**
+ * Request data passed to a Vueforge application factory.
+ *
+ * `props` is forwarded to the root Vue component. `state` is the optional
+ * request state returned with the render result. Additional application data
+ * can be added by the backend.
+ */
+export type VueforgeContext<
+  Props extends Record<string, unknown> = Record<string, unknown>,
+  State = unknown,
+> = Record<string, unknown> & {
+  props?: Props
+  state?: State
+}
 
 /** A request-scoped Vue application factory used by `main`. */
 export type VueforgeAppFactory<
@@ -140,8 +152,8 @@ export type VueforgeTemplateCatalog = Record<string, VueforgeTemplate>
 export type VueforgeTemplates = string | RegExp | VueforgeTemplateCatalog
 
 /** The single application source selected by `vueforge.config.ts`. */
-export type VueforgeMain =
-  VueforgeTemplates | VueforgeTemplate | VueforgeAppFactory
+export type VueforgeMain<Context extends VueforgeContext = VueforgeContext> =
+  VueforgeTemplates | VueforgeTemplate | VueforgeAppFactory<Context>
 
 /**
  * Project settings read from the default export of `vueforge.config.ts`.
@@ -152,7 +164,9 @@ export type VueforgeMain =
  *
  * When `main` is omitted, Vueforge uses `src/App.vue`.
  */
-export type VueforgeConfig = ProjectOptions & { main?: VueforgeMain }
+export type VueforgeConfig<
+  Context extends VueforgeContext = VueforgeContext,
+> = ProjectOptions & { main?: VueforgeMain<Context> }
 
 /**
  * Provides type checking and editor completion for a Vueforge configuration.
@@ -174,6 +188,13 @@ export type VueforgeConfig = ProjectOptions & { main?: VueforgeMain }
  * })
  * ```
  */
+export function defineConfig<
+  Context extends VueforgeContext = VueforgeContext,
+  App = object,
+>(
+  config: ProjectOptions & { main: VueforgeAppFactory<Context, App> },
+): VueforgeConfig<Context>
+export function defineConfig(config: VueforgeConfig): VueforgeConfig
 export function defineConfig(config: VueforgeConfig): VueforgeConfig {
   return config
 }
