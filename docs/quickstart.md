@@ -64,7 +64,7 @@ The production server reads `build.outDir`, which defaults to `dist`.
 ## 6. Choose an application source
 
 Use `main: 'src/entry.ts'` when the app needs request-scoped plugins or stores.
-Use `main: 'src/catalog'` when the backend chooses a named `.vue` view.
+Use `main: 'src/pages'` when the backend chooses a named `.vue` view.
 
 ```json
 POST /render?template=invoice

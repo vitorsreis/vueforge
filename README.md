@@ -79,6 +79,7 @@ regular expression, or named object for Twig-like template selection. The
 - [Quickstart](docs/quickstart.md)
 - [Configuration and CLI](docs/configuration.md)
 - [HTTP API](docs/http-api.md)
+- [Renderer API](docs/renderer-api.md)
 - [Backend integration](docs/integration.md)
 - [Operations](docs/operations.md)
 - [Architecture](docs/architecture.md)

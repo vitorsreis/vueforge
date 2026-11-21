@@ -58,7 +58,7 @@ JSON. HTML responses are never pretty-printed by this option.
 
 ## HTML response
 
-Request a complete document with the body field or `Accept: text/html`.
+Request a complete document with `format=html` or `Accept: text/html`.
 
 ```sh
 curl --request POST \

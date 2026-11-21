@@ -18,7 +18,19 @@ last production build. `build` writes browser and SSR artifacts. `render` reads 
 JSON request from standard input and writes one response to standard output.
 
 Global options are `-r, --root`, `-c, --config`, `-h, --help`, and
-`-v, --version`. `render` also accepts `-f, --format` and `--pretty`.
+`-v, --version`. `serve` accepts transport, TLS, shutdown, and render-limit
+overrides. `render` accepts `-f, --format`, `--pretty`, `--hydrate`,
+`--template`, and `--max-request-bytes`.
+
+| Command  | Options                                                                                                                                                                                                          |
+| -------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `serve`  | `--dev`, `--host`, `--port`, `--unix`, `--stdio`, `--ssl-cert`, `--ssl-key`, `--ssl-ca`, `--shutdown-timeout-ms`, `--max-request-bytes`, `--max-output-bytes`, `--render-timeout-ms`, `--max-concurrent-renders` |
+| `build`  | Global options                                                                                                                                                                                                   |
+| `render` | `--format`, `--hydrate`, `--template`, `--pretty`, `--max-request-bytes`                                                                                                                                         |
+
+All numeric CLI limits must be positive safe integers. `--max-request-bytes`
+is accepted by both `serve` and `render`. The other resource-limit overrides
+apply to `serve`.
 
 ## Application selection
 
@@ -150,7 +162,9 @@ export default {
 ```
 
 `server.shutdownTimeoutMs` bounds graceful shutdown. The CLI overrides server
-transport, TLS, and resource-limit values for one invocation.
+transport, TLS, and resource-limit values for one invocation. Transport flags
+`--host` and `--port` cannot be combined with `--unix` or `--stdio`. Unix
+sockets and stdio are mutually exclusive.
 
 Set `mode: 'development'` when the project should start development SSR without
 passing `serve --dev`:
@@ -184,7 +198,8 @@ export default {
 
 `tempDir` stores build locks and staging files. `build.outDir` stores the
 published `client` and `server` artifacts used by production `serve` and
-`render`.
+`render`. `maxOutputBytes` bounds the serialized response and the request
+context transferred from production SSR workers.
 
 ## Vite and asset URLs
 

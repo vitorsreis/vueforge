@@ -19,12 +19,15 @@ export {
 
 /** A structured element accepted by document and head configuration. */
 export interface HeadTag {
+  /** HTML tag name, such as `meta` or `script`. */
   tag: string
+  /** String-valued HTML attributes. */
   attrs: Record<string, string>
+  /** Optional text content. */
   content?: string
 }
 
-/** A structured head element or trusted raw HTML entry. */
+/** A structured head element or trusted raw HTML entry. Raw HTML is emitted as supplied. */
 export type HeadEntry = HeadTag | { html: string }
 
 /** Options used when `format: 'html'` produces a complete document. */
@@ -41,6 +44,7 @@ export interface DocumentOptions {
   head?: HeadEntry[]
 }
 
+/** CORS settings accepted by `server.cors`. */
 export interface CorsOptions {
   /** Allowed request origin or origins. */
   origin?: string | RegExp | (string | RegExp)[]
@@ -60,6 +64,7 @@ export interface CorsOptions {
   optionsSuccessStatus?: number
 }
 
+/** Listener, transport, TLS, CORS, and shutdown settings for `serve`. */
 export interface ServerOptions {
   /** TCP bind hostname or IP address. */
   host?: string
@@ -77,6 +82,7 @@ export interface ServerOptions {
   shutdownTimeoutMs?: number
 }
 
+/** TLS files used to create an HTTPS server. */
 export interface VueforgeSslOptions {
   /** TLS private key file. */
   key: string
@@ -86,6 +92,7 @@ export interface VueforgeSslOptions {
   ca?: string
 }
 
+/** Bounds applied to render requests and production SSR work. */
 export interface VueforgeLimits {
   /** Maximum request body size in bytes. */
   maxRequestBytes?: number
@@ -93,10 +100,11 @@ export interface VueforgeLimits {
   maxConcurrentRenders?: number
   /** Maximum time allowed for one SSR render in milliseconds. */
   renderTimeoutMs?: number
-  /** Maximum rendered HTML size in bytes. */
+  /** Maximum serialized render response and worker context size in bytes. */
   maxOutputBytes?: number
 }
 
+/** Output and optimization options for `vueforge build`. */
 export interface VueforgeBuildOptions {
   /** Final client and server artifact directory. */
   outDir?: string
