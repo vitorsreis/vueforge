@@ -1,19 +1,50 @@
 # Contributing
 
-Install Node.js 26 LTS and run `npm ci`. Run `npm run check` before opening a pull request. Use `npm run format` to apply formatting.
+## Development environment
 
-Build and type checking use the TypeScript 7 compiler. ESLint uses the TypeScript 6 API supported by typescript-eslint.
-
-`npm run check` runs formatting, lint, type checks, unit tests and integration tests. Use `npm run test:qualification` to pack the release and test it from a fresh consumer installation. Use `npm run test:browser` to exercise SSR, hydration and HMR in Chrome. For throughput and latency measurements, see [Production SSR benchmark](docs/benchmarks.md).
-
-To try the bundled app from such a checkout:
+VueForge requires Node.js 26 and npm.
 
 ```sh
-npm run build
-cd examples/basic
-node ../../bin/vueforge serve --dev
+npm ci
+npm run check
 ```
 
-From that same directory, stop the dev server and run `node ../../bin/vueforge build`, followed by `node ../../bin/vueforge serve`, to exercise the production build.
+Use `npm run format` to apply Prettier formatting. The project uses TypeScript, ESLint, Prettier, and Node's built-in test runner. Maintainer-specific workflows are documented in [docs/README.md](docs/README.md).
 
-Open focused pull requests against `main` and describe how you verified the change. Use signed Conventional Commits, such as `fix: isolate request context`. Add an entry to `CHANGELOG.md` for user-facing changes.
+## Useful checks
+
+| Command                        | Purpose                                                                      |
+| ------------------------------ | ---------------------------------------------------------------------------- |
+| `npm run check`                | Formatting, lint, type checking, build, and automated tests.                 |
+| `npm run test:browser`         | Browser verification for SSR, hydration, styles, and HMR.                    |
+| `npm run test:qualification`   | Install the packed package in a clean consumer project and exercise its CLI. |
+| `npm run bench:render`         | Measure the production SSR example over loopback HTTP.                       |
+| `npm audit --audit-level=high` | Check dependency advisories.                                                 |
+
+Run the browser test only when a Chromium-based browser is available. Set `BROWSER_EXECUTABLE` to select its executable path.
+
+## Project layout
+
+```text
+bin/vueforge       CLI entry point
+src/index.ts       Public package API
+src/config.ts      Project configuration loading and validation
+src/build.ts       Production artifact generation
+src/render/        Request validation and response assembly
+src/server/        Development, production, and HTTP server runtime
+src/vite/          Vue and Vite integration
+tests/             Unit, integration, browser, and qualification tests
+docs/              User and maintainer documentation
+```
+
+## Pull requests
+
+Keep changes focused and include tests for behavior changes. Update the relevant user documentation when a public command, configuration option, request field, response field, or error behavior changes.
+
+Use signed Conventional Commits, for example:
+
+```text
+fix: isolate request context
+```
+
+Before opening a pull request, run the checks that cover the changed code and describe the commands and results in the pull request. Keep generated files and local `.vueforge` artifacts out of commits.

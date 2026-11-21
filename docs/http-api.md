@@ -1,57 +1,94 @@
 # HTTP API
 
-The default origin is `http://127.0.0.1:9901`. Development and production expose the same routes.
+VueForge exposes an HTTP service in both development and production. The default origin is `http://127.0.0.1:9901`.
 
-## POST /render
+The backend owns application routes and the final HTML document. VueForge returns render fragments and never chooses a URL for the backend.
 
-Send a JSON object with `Content-Type: application/json`. The body limit is 64 KiB (65,536 bytes). All request fields are optional.
+## `POST /render`
 
-| Field     | Type                 | Default  | Meaning                                                            |
-| --------- | -------------------- | -------- | ------------------------------------------------------------------ |
-| `props`   | JSON object          | `{}`     | Props passed to the root component.                                |
-| `context` | JSON object          | —        | Optional rendering context passed to the configured source.        |
-| `format`  | `"html"` or `"json"` | `"html"` | Controls how the `head` field is represented in the JSON response. |
-| `hydrate` | Boolean              | `false`  | Includes the browser entry and serialized props for hydration.     |
+Send one JSON object with `Content-Type: application/json`. The request body is limited to 64 KiB. Every field is optional.
 
-Send `{}` to render the component with its prop defaults.
+| Field     | Type                 | Default  | Description                                                                                      |
+| --------- | -------------------- | -------- | ------------------------------------------------------------------------------------------------ |
+| `props`   | object               | `{}`     | Props for the configured Vue source.                                                             |
+| `context` | object               | omitted  | Per-request data for an `entry` factory or the root `context` prop of a file or template source. |
+| `format`  | `"html"` or `"json"` | `"html"` | Representation of the `head` field in the response.                                              |
+| `hydrate` | boolean              | `false`  | Include browser assets and serialized request data for hydration.                                |
 
-```json
-{ "props": { "title": "Hello" } }
-```
-
-The configured source is selected in project configuration, not in the request body. `context` is passed as the first argument to an `entry` factory, or as the root `context` prop for `file` and `template` sources (taking precedence over `props.context`). The CLI accepts the same request fields through stdin. When `hydrate` is `true`, the complete context is serialized to the page and is public; use the same context for server rendering and hydration.
-
-For component sources, only declared Vue props are passed to the root during SSR and hydration. Declare a `context` prop to receive request context. An entry factory receives the full request objects and chooses which fields to pass through. All submitted props and context are public when hydration is enabled, including fields the component ignores.
-
-With the component in the [quick start](../README.md), HTTP 200 returns the following JSON.
+Example request:
 
 ```json
-{ "head": "", "content": "<h1>Hello</h1>" }
+{
+  "props": { "title": "Hello" },
+  "context": { "locale": "en" },
+  "hydrate": true
+}
 ```
 
-`content` is the rendered HTML fragment. The caller owns the document and wraps that fragment in `<div id="app">` when using hydration. `head` contains stylesheet entries and any HTML sent to `head` by Vue's native `<Teleport to="head">`, even with hydration disabled. Place it inside the document's `<head>`.
+The source is selected in `vueforge.config.ts`, never in the request body. File and template sources receive only props declared by the root component. An `entry` factory receives the complete `context` and `props` objects and decides what to use.
 
-With `format: "html"`, `head` is directly embeddable markup. With `format: "json"`, it is an array in document order. VueForge-generated entries have a `tag` string and an `attrs` object, plus a `content` string when they have inner content. Teleported entries have the shape `{ "html": "..." }`. Treat those entries as raw HTML from trusted project components. Serialize the structured entries as their indicated HTML elements if you use them in a page.
+With `hydrate: true`, all submitted `props` and `context` values are public because VueForge embeds them in the page. Use the same values when the backend composes the server-rendered page and when the browser hydrates it.
 
-### Hydrating a backend page
+### Response
 
-Send `"hydrate": true` and insert the returned head and content into your document. Use this layout with the default HTML format.
+A successful response has this shape:
+
+```json
+{
+  "head": "",
+  "content": "<h1>Hello</h1>"
+}
+```
+
+`content` is the rendered HTML fragment. Insert it inside the element that will contain the Vue app, usually `<div id="app">`.
+
+`head` contains stylesheet tags, the browser entry when hydration is enabled, and markup sent to Vue's native `<Teleport to="head">`. Insert it inside the document's `<head>`.
+
+With `format: "html"`, `head` is an HTML string:
+
+```json
+{
+  "head": "<link rel=\"stylesheet\" href=\"/assets/app.css\">",
+  "content": "<h1>Hello</h1>"
+}
+```
+
+With `format: "json"`, `head` is an ordered array. Generated entries have `tag`, `attrs`, and optional `content`. Teleported head content is represented as `{ "html": "..." }`.
+
+```json
+{
+  "head": [
+    {
+      "tag": "link",
+      "attrs": { "rel": "stylesheet", "href": "/assets/app.css" }
+    },
+    {
+      "html": "<!--teleport start anchor--><title>Hello</title><!--teleport anchor-->"
+    }
+  ],
+  "content": "<h1>Hello</h1>"
+}
+```
+
+Treat generated head entries and content as output from the trusted Vue project. Escape or sanitize values before putting untrusted data into component props.
+
+### Hydration
+
+Use `hydrate: true` when the backend will serve a page that the browser must activate:
 
 ```html
 <!doctype html>
 <html lang="en">
   <head>
-    <!-- Insert head here -->
+    <!-- insert response.head here -->
   </head>
   <body>
-    <div id="app"><!-- Insert content here --></div>
+    <div id="app"><!-- insert response.content here --></div>
   </body>
 </html>
 ```
 
-Keep the returned head nodes in the document when the modules execute. VueForge embeds request props as escaped JSON in `<script type="application/json" id="vueforge-props">`. The browser can read those props, so pass values that are safe to expose to the page. Development includes the `/@vite/client` and `/@vueforge/client` modules. Production uses a hashed client entry from the build.
-
-Root-relative asset URLs resolve against the page's origin. If VueForge listens on a separate port in production, serve the build's client assets from the backend origin or forward asset requests to VueForge. In development, a proxy can keep your backend page routes local and forward other GET requests and WebSocket upgrades to VueForge. The upgrades carry Vite HMR on the same origin.
+Development responses include `/@vite/client` and `/@vueforge/client`. Production responses include the hashed client entry from the build. Keep all returned head nodes in the document. Root-relative asset URLs must resolve from the page origin. A reverse proxy can forward development asset requests and the Vite WebSocket to VueForge.
 
 ### Calling from Python
 
@@ -70,32 +107,9 @@ with urlopen(request, timeout=5) as response:
     print(result["content"])
 ```
 
-### Handling errors
+## `GET /`
 
-Render errors use a JSON body with an `error` string. Use the HTTP status to choose how to handle a failure. The message is for the person diagnosing it.
-
-| Status | Cause                                                        | Action                                                                       |
-| ------ | ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
-| 400    | Malformed JSON, a non-object body, or invalid request fields | Send a JSON object with the JSON content type and use the field types above. |
-| 413    | Body exceeds 64 KiB                                          | Reduce the data passed to the component.                                     |
-| 415    | Unsupported charset or content encoding                      | Send uncompressed UTF-8 JSON.                                                |
-| 500    | SSR threw while handling the render                          | Inspect the VueForge process log for the original exception.                 |
-| 503    | All four render slots are occupied                           | Honor the `Retry-After` header before retrying.                              |
-| 504    | The render exceeded its five-second deadline                 | Inspect slow component work and upstream calls.                              |
-
-The production HTTP server terminates a worker that exceeds the deadline and limits the combined rendered content and teleported head to 4 MiB before transferring them to the HTTP process. Development keeps using Vite's module runner. An asynchronous render that times out still occupies a slot until it settles. Synchronous development code can block the dev server. The one-shot CLI uses its own process.
-
-For example, sending `{"props":[]}` returns HTTP 400 and:
-
-```json
-{
-  "error": "\"props\" must be a JSON object, for example {\"props\":{\"title\":\"Hello\"}}."
-}
-```
-
-## GET /
-
-Returns HTTP 200 with project information as JSON.
+Returns the VueForge welcome information as JSON.
 
 ```json
 {
@@ -106,6 +120,33 @@ Returns HTTP 200 with project information as JSON.
 }
 ```
 
-## GET /healthz
+The `version` value is read from the installed package.
 
-Returns HTTP 200, `Cache-Control: no-store` and `{"status":"ok"}`. This liveness probe confirms the server answers HTTP after initialization. To check a specific component's render behavior, call `POST /render` with representative props.
+## `GET /healthz`
+
+Returns HTTP 200 with `Cache-Control: no-store`:
+
+```json
+{ "status": "ok" }
+```
+
+Use this route for a liveness check. Use `POST /render` to check application rendering.
+
+## Errors
+
+Error responses use this shape:
+
+```json
+{ "error": "A human-readable diagnostic" }
+```
+
+| Status | Meaning                                                                     |
+| ------ | --------------------------------------------------------------------------- |
+| `400`  | Invalid JSON, a non-object body, or invalid field types.                    |
+| `413`  | The request exceeds 64 KiB.                                                 |
+| `415`  | The request is not uncompressed UTF-8 JSON.                                 |
+| `500`  | Vue SSR failed. The process log contains the component error.               |
+| `503`  | All production render slots are busy. Retry after the `Retry-After` header. |
+| `504`  | A production render exceeded its five-second deadline.                      |
+
+Production limits concurrent renders to four slots and limits the transferred render result to 4 MiB. Development uses Vite's module runner and can still be blocked by synchronous project code.
