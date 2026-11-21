@@ -28,8 +28,19 @@ function entries(root: string, source: AppSource): Plugin {
   )
   const appFactory =
     source.kind === 'entry'
-      ? `import factory from ${appImport}
-const createApp = (context, props = {}) => factory(context, props)`
+      ? `import * as entry from ${appImport}
+async function createApp(context, props = {}) {
+  const factory = 'createApp' in entry ? entry.createApp : entry.default
+  if (typeof factory !== 'function') {
+    throw new Error('The Vue entry must export a createApp function or a default app factory.')
+  }
+  const result = await factory(context, props)
+  const app = result?.app ?? result
+  if (typeof app?.mount !== 'function' || !app.config) {
+    throw new Error('The Vue entry factory must return a Vue application or an object containing app.')
+  }
+  return app
+}`
       : `import { createSSRApp } from 'vue'
 import App from ${appImport}
 const createApp = (context, props) =>

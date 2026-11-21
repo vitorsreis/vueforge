@@ -43,7 +43,7 @@ export default defineConfig({
 | `vite`     | Built-in Vue integration | Vite options such as aliases, compile-time definitions and additional plugins, passed to development and both builds.                                                                                 |
 | `file`     | `src/App.vue`            | Project-relative Vue SFC used as the root component. Mutually exclusive with `template` and `entry`.                                                                                                  |
 | `template` | —                        | Inline Vue SFC source used as the root component. Relative imports resolve from the project root. Mutually exclusive with `file` and `entry`.                                                         |
-| `entry`    | —                        | Project-relative local module with a default app factory. Mutually exclusive with `file` and `template`.                                                                                              |
+| `entry`    | —                        | Project-relative local module that exports a Vue SSR app factory. Mutually exclusive with `file` and `template`.                                                                                      |
 
 By default VueForge uses `src/App.vue`. To select a source, set exactly one of `file`, `template` or `entry` in `vueforge.config.ts`:
 
@@ -55,17 +55,18 @@ export default defineConfig({
 })
 ```
 
-An `entry` module exports a default factory that receives `(context, props)` and returns a fresh Vue app or a promise for it. An omitted context arrives as `undefined`; omitted props arrive as `{}`. The `defineApp` helper provides editor support.
+Point `entry` at the module shared by your server and browser. VueForge calls its named `createApp` export once per render and again for browser hydration. A default-exported factory also works. The factory may be async and may return either the Vue app or an object containing `app`, such as `{ app, store }`. The shared module creates the app and leaves mounting to the browser entry. [Vue SSR guide](https://vuejs.org/guide/scaling-up/ssr.html#code-structure)
 
 ```ts
 import { createSSRApp } from 'vue'
-import { defineApp } from 'vueforge'
-import App from './src/App.vue'
+import App from './App.vue'
 
-export default defineApp(async (context, props) =>
-  createSSRApp(App, { ...props, context }),
-)
+export function createApp() {
+  return createSSRApp(App)
+}
 ```
+
+Factories that need request data can accept `(context, props)`. An omitted context arrives as `undefined` and omitted props arrive as `{}`.
 
 HTTP and CLI render requests may include an optional JSON object `context`. For `file` and `template`, VueForge passes it as the root component's `context` prop; this takes precedence over `props.context`. With hydration enabled, `context` is serialized for the browser, so it is fully public. Keep the same context available for server rendering and hydration.
 

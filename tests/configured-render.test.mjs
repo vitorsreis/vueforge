@@ -129,6 +129,19 @@ for (const { name, config, files, content } of [
     files: { 'src/custom-entry.ts': entry },
     content: /^<h1>Hello Ada<\/h1>$/,
   },
+  {
+    name: 'named Vue SSR factory',
+    config: { entry: './src/app.ts' },
+    files: {
+      'src/app.ts': [
+        "import { createSSRApp, h } from 'vue'",
+        'export function createApp() {',
+        "  return createSSRApp({ render: () => h('h1', 'Vue SSR') })",
+        '}',
+      ].join('\n'),
+    },
+    content: /^<h1>Vue SSR<\/h1>$/,
+  },
 ]) {
   test(
     'renders configured ' +

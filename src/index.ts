@@ -1,4 +1,3 @@
-import type { App } from 'vue'
 import type { UserConfig } from 'vite'
 
 interface ProjectOptions {
@@ -22,22 +21,6 @@ type AppSource =
  * With none specified, VueForge uses `src/App.vue`.
  */
 export type VueForgeConfig = ProjectOptions & AppSource
-
-/** An entry module's default export. Create a fresh SSR app for each call.
- * Omitted request props arrive as an empty object.
- */
-export type AppFactory<
-  Context = Record<string, unknown>,
-  Props = Record<string, unknown>,
-> = (context: Context | undefined, props: Props) => App | Promise<App>
-
-/** Provides type checking and editor completion for an app factory. */
-export function defineApp<
-  Context = Record<string, unknown>,
-  Props = Record<string, unknown>,
->(factory: AppFactory<Context, Props>): AppFactory<Context, Props> {
-  return factory
-}
 
 /**
  * Provides type checking and editor completion for a VueForge configuration.

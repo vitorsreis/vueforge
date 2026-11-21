@@ -1,11 +1,11 @@
 import { createSSRApp } from 'vue'
-import { defineApp } from 'vueforge'
 
 import App from './App.vue'
 
-export default defineApp((context) =>
-  createSSRApp(App, {
+export function createApp(context?: { title: string; initialCount: number }) {
+  const app = createSSRApp(App, {
     title: context?.title,
     initialCount: context?.initialCount,
-  }),
-)
+  })
+  return { app }
+}

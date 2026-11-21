@@ -1,9 +1,9 @@
 import assert from 'node:assert/strict'
 import test from 'node:test'
 
-test('the package root exposes the app and configuration helpers at runtime', async () => {
+test('the package root exposes only the configuration helper at runtime', async () => {
   const api = await import('vueforge')
-  assert.deepEqual(Object.keys(api), ['defineApp', 'defineConfig'])
+  assert.deepEqual(Object.keys(api), ['defineConfig'])
   assert.deepEqual(api.defineConfig({ port: 4300 }), { port: 4300 })
 })
 
