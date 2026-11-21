@@ -60,6 +60,20 @@ const renderer = await createVueforgeRenderer({
 Top-level renderer options supplied alongside `config` override values loaded
 from that file.
 
+For a host that already has the Vue application factory in memory, `main` can
+be a handler directly. It receives the complete request context for each
+render and returns a fresh Vue app or `{ app }`:
+
+```ts
+import { createSSRApp } from 'vue'
+import { createVueforgeRenderer } from '@vitorsreis/vueforge'
+import App from './src/App.vue'
+
+const renderer = await createVueforgeRenderer({
+  main: (context) => createSSRApp(App, context.props),
+})
+```
+
 ## Render a request
 
 Pass the complete application context to `render`:
