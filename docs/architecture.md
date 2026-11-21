@@ -47,6 +47,7 @@ fragments with the configured document options.
 
 ## Public package boundary
 
-The package root exports `defineConfig` and `createVueforgeApp`. Server adapters,
-Vite plugins, workers, and transport internals remain private implementation
-modules. The CLI is published as the `vueforge` executable.
+The package root exports `defineConfig`, `createVueforgeApp`, and
+`createVueforgeRenderer`. Server adapters, Vite plugins, workers, and transport
+internals remain private implementation modules. The CLI is published as the
+`vueforge` executable.

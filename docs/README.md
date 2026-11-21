@@ -8,6 +8,7 @@ Vueforge connects a Vue 3 application to a backend written in any language. Star
 - [CLI and configuration](configuration.md) explains zero-config projects, `main` sources, Vite options, and the three CLI commands.
 - [HTTP API](http-api.md) defines the request and response contracts for `/render`, `/`, and `/healthz`.
 - [Backend integration](integration.md) shows how to compose `head` and `content`, enable hydration, proxy development assets, and deploy production assets.
+- [Renderer API](renderer-api.md) exposes the SSR pipeline for custom servers and adapters.
 - [Operations](operations.md) covers build and serve lifecycle, request isolation, limits, health checks, and troubleshooting.
 - [Architecture](architecture.md) describes `main` source selection, adapters, rendering, and the response contract.
 
