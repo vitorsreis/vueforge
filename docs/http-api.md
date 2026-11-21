@@ -89,7 +89,15 @@ For example, sending `{"props":[]}` returns HTTP 400 and:
 
 ## GET /
 
-Returns HTTP 200 with the plain text `Welcome to VueForge!`.
+Returns HTTP 200 with project information as JSON.
+
+```json
+{
+  "message": "Welcome to VueForge!",
+  "repository": "https://github.com/vitorsreis/vueforge",
+  "poweredBy": "Vitor Reis"
+}
+```
 
 ## GET /healthz
 

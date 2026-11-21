@@ -27,7 +27,11 @@ export async function serveProject(
   })
 
   app.get('/', (_req, res) => {
-    res.type('text/plain').send('Welcome to VueForge!')
+    res.json({
+      message: 'Welcome to VueForge!',
+      repository: 'https://github.com/vitorsreis/vueforge',
+      poweredBy: 'Vitor Reis',
+    })
   })
 
   app.use('/render', renderRoute(renderer.render))

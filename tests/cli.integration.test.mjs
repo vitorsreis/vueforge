@@ -48,8 +48,12 @@ function post(url, body) {
 async function checkRenderResponses(url) {
   const page = await fetch(url, { signal: AbortSignal.timeout(5000) })
   assert.equal(page.status, 200)
-  assert.match(page.headers.get('content-type'), /^text\/plain\b/)
-  assert.equal(await page.text(), 'Welcome to VueForge!')
+  assert.match(page.headers.get('content-type'), /^application\/json\b/)
+  assert.deepEqual(await page.json(), {
+    message: 'Welcome to VueForge!',
+    repository: 'https://github.com/vitorsreis/vueforge',
+    poweredBy: 'Vitor Reis',
+  })
 
   for (const [body, status, message] of [
     ['{', 400, /JSON object/],
