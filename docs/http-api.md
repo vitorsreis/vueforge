@@ -32,7 +32,7 @@ curl --request POST \
 ```
 
 The request body is bounded by `limits.maxRequestBytes`. `template` is required
-when `catalog` is configured and must match a configured name.
+when `main` selects a template catalog and must match a configured name.
 
 ## JSON response
 
@@ -99,7 +99,7 @@ complete request context and selected template name are serialized into one
   "message": "Welcome to Vueforge!",
   "poweredBy": "Vitor Reis",
   "repo": "https://github.com/vitorsreis/vueforge",
-  "version": "0.0.0"
+  "version": "1.0.0"
 }
 ```
 
