@@ -29,7 +29,7 @@
     "lint": "eslint . --max-warnings=0",
     "format": "prettier --write .",
     "format:check": "prettier --check .",
-    "test": "npm run build && node --test",
+    "test": "npm run build && node --test --test-concurrency=1",
     "check": "npm run format:check && npm run lint && npm run typecheck && npm test",
     "test:browser": "npm run build && node tests/browser-smoke.mjs",
     "prepack": "npm run build",
