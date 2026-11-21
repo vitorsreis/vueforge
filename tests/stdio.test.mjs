@@ -74,10 +74,7 @@ export default { tempDir: 'cache/temp', build: { outDir: 'cache/render output' }
   t.after(() => new Promise((resolve) => http.close(resolve)))
   await once(http, 'listening')
 
-  for (const body of [
-    atLimit,
-    '{"props":{"title":"Hello <Vue>"},"format":"json","hydrate":true}',
-  ]) {
+  for (const body of [atLimit, '{"props":{"title":"Hello <Vue>"}}']) {
     const stdio = run(cwd, 'render', body)
     assert.equal(stdio.status, 0, stdio.stderr)
     const response = await fetch(
@@ -102,9 +99,8 @@ export default { tempDir: 'cache/temp', build: { outDir: 'cache/render output' }
 test('render rejects malformed, non-UTF-8 and oversized stdin without stdout', async (t) => {
   const cwd = await project(t)
   for (const [input, error] of [
-    ['{}\n{}', /JSON object/],
+    ['{}\n{}', /valid JSON context object/],
     ['null', /request body.*object/i],
-    ['{"props":[]}', /"props" must be a JSON object/],
     [Buffer.from([0x7b, 0x22, 0xff, 0x22, 0x3a, 0x30, 0x7d]), /UTF-8/],
     ['{"\u00e1":0}'.padEnd(65536), /64 KiB/],
     ['{}', /vueforge build/],

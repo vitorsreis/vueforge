@@ -137,7 +137,14 @@ export async function loadProjectConfig(
         ? config.root
         : root),
   )
-  return { ...config, root: resolvedRoot } as VueforgeConfig
+  const resolvedConfig = { ...config, root: resolvedRoot } as VueforgeConfig
+  if (file) {
+    Object.defineProperty(resolvedConfig, '__vueforgeConfigFile', {
+      value: file,
+      enumerable: false,
+    })
+  }
+  return resolvedConfig
 }
 
 export function resolveTempDir(root: string, tempDir: unknown = '.vueforge') {

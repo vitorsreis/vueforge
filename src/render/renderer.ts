@@ -1,15 +1,15 @@
 import type { HeadTag } from './head.js'
 
-export type Props = Record<string, unknown>
+export type RenderContext = Record<string, unknown>
 
 interface RenderedApp {
   content: string
   teleportHead: string
+  context: RenderContext | undefined
 }
 
 export type AppRender = (
-  props?: Props,
-  context?: Record<string, unknown>,
+  context?: RenderContext,
   template?: string,
 ) => Promise<RenderedApp>
 

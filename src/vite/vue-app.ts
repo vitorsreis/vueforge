@@ -62,10 +62,10 @@ function declaredProps(component, names = new Set()) {
   return names
 }
 
-function createComponentApp(context, props = {}, template) {
+function createComponentApp(context = {}, template) {
   ${selection}
   const declared = declaredProps(App)
-  const input = context === undefined ? props : { ...props, context }
+  const input = context.props ?? {}
   const rootProps = Object.fromEntries(Object.entries(input).filter(([key]) => {
     const name = camelize(key)
     return declared.has(name) && !reservedProps.has(name) && !name.startsWith('$') && name !== '__proto__'
@@ -76,15 +76,31 @@ function createComponentApp(context, props = {}, template) {
 
 function entryFactory(source: string) {
   return `import * as entry from ${JSON.stringify(source)}
-async function createEntryApp(context, props = {}) {
+async function createEntryApp(context) {
   const factory = entry.createApp ?? entry.default
   if (typeof factory !== 'function') throw new Error(
     'The Vue entry must export a createApp function or a default app factory.',
   )
-  const result = await factory(context, props)
+  const result = await factory(context)
   const app = result?.app ?? result
   if (typeof app?.mount !== 'function' || !app.config) throw new Error(
     'The Vue entry factory must return a Vue application or an object containing app.',
+  )
+  return app
+}`
+}
+
+function configFactory(source: string) {
+  return `import config from ${JSON.stringify(source)}
+async function createFactoryApp(context) {
+  const factory = config.main
+  if (typeof factory !== 'function') throw new Error(
+    'The Vueforge main factory is not a function.',
+  )
+  const result = await factory(context)
+  const app = result?.app ?? result
+  if (typeof app?.mount !== 'function' || !app.config) throw new Error(
+    'The Vueforge main factory must return a Vue application or an object containing app.',
   )
   return app
 }`
@@ -94,17 +110,15 @@ function entries(root: string, sources: AppSources, rootId: string): Plugin {
   const inline = new Map<string, string>()
   let appFactory: string
 
-  if (sources.entry) {
-    appFactory = entryFactory(sources.entry)
+  if (sources.kind === 'entry') {
+    appFactory = entryFactory(sources.url)
+  } else if (sources.kind === 'factory') {
+    appFactory = configFactory(sources.configFile)
   } else {
-    let templates: Record<string, AppTemplate>
-    if (sources.templates !== undefined) {
-      templates = sources.templates
-    } else if (sources.template !== undefined) {
-      templates = { default: sources.template }
-    } else {
-      throw new Error('Vueforge requires a template or entry.')
-    }
+    const templates: Record<string, AppTemplate> =
+      sources.kind === 'templates'
+        ? sources.templates
+        : { default: sources.template }
     const imports: string[] = ["import { camelize, createSSRApp } from 'vue'"]
     const selected: string[] = []
     for (const [name, source] of Object.entries(templates)) {
@@ -119,7 +133,7 @@ function entries(root: string, sources: AppSources, rootId: string): Plugin {
     appFactory = componentFactory(
       imports.join('\n'),
       `{ ${selected.join(', ')} }`,
-      sources.templates !== undefined,
+      sources.kind === 'templates',
     )
   }
 
@@ -149,7 +163,10 @@ const anchor = Array.from(head.childNodes).find(
 )
 if (anchor && !head._lpa) head._lpa = anchor
 async function hydrate() {
-  const app = ${sources.entry ? 'await createEntryApp' : 'createComponentApp'}(readData('vueforge-context'), readData('vueforge-props'), readData('vueforge-template'))
+  const payload = readData('__VUEFORGE__') ?? {}
+  const context = payload.context ?? payload
+  const template = payload.template
+  const app = ${sources.kind === 'entry' ? 'await createEntryApp' : sources.kind === 'factory' ? 'await createFactoryApp' : 'createComponentApp'}(context, template)
   const root = document.getElementById(${JSON.stringify(rootId)})
   if (!root) throw new Error(${JSON.stringify(`Vueforge hydration root was not found: ${rootId}`)})
   app.mount(root)
@@ -198,12 +215,12 @@ if (import.meta.hot) {
       if (id === '\0' + serverEntry) {
         return `${appFactory}
 import { renderToString } from 'vue/server-renderer'
-export async function render(props, context, template) {
+export async function render(context = {}, template) {
   const ssr = {}
-  const app = await ${sources.entry ? 'createEntryApp' : 'createComponentApp'}(context, props, template)
+  const app = await ${sources.kind === 'entry' ? 'createEntryApp' : sources.kind === 'factory' ? 'createFactoryApp' : 'createComponentApp'}(context, template)
   app.config.throwUnhandledErrorInProduction = true
   const content = await renderToString(app, ssr)
-  return { content, teleportHead: ssr.teleports?.head ?? '', modules: [...(ssr.modules ?? [])] }
+  return { content, teleportHead: ssr.teleports?.head ?? '', modules: [...(ssr.modules ?? [])], context }
 }`
       }
       return undefined

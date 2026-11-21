@@ -49,17 +49,19 @@ export async function developmentRenderer(
     throw new Error('Vueforge could not initialize the Vite SSR runner.')
   }
 
-  const render: Render = async (props, context, template) => {
+  const render: Render = async (context = {}, template) => {
     const entry = await ssr.runner.import<unknown>(serverEntry)
     const renderApp = renderFrom(entry)
-    const { content, teleportHead, modules } = await renderApp(
-      props,
-      context,
-      template,
-    )
+    const {
+      content,
+      teleportHead,
+      modules,
+      context: renderedContext,
+    } = await renderApp(context, template)
     return {
       content,
       teleportHead,
+      context: renderedContext,
       assets: await developmentAssets(
         vite.environments.client,
         modules,

@@ -9,6 +9,7 @@ type RenderResult = Awaited<ReturnType<Render>>
 interface RenderResponse<Head> {
   head: Head
   content: string
+  state?: unknown
 }
 
 export type FormattedRenderResponse =
@@ -28,13 +29,10 @@ export function formattedResponseBytes(response: FormattedRenderResponse) {
   return new TextEncoder().encode(body).byteLength
 }
 
-function hydrationData(
-  id: string,
-  value: Record<string, unknown> | string,
-): HeadTag {
+function hydrationData(value: unknown): HeadTag {
   return {
     tag: 'script',
-    attrs: { type: 'application/json', id },
+    attrs: { type: 'application/json', id: '__VUEFORGE__' },
     content: JSON.stringify(value).replaceAll('<', '\\u003c'),
   }
 }
@@ -64,20 +62,27 @@ export function renderResponse(
   request: RenderRequest,
 ): RenderResponse<string | HeadEntry[]>
 export function renderResponse(
-  { teleportHead, assets, content }: RenderResult,
+  { teleportHead, assets, content, context }: RenderResult,
   { format, ...request }: RenderRequest,
 ): RenderResponse<string | HeadEntry[]> {
-  const entries = renderHeadEntries({ teleportHead, assets, content }, request)
+  const safeContext = context ?? {}
+  const entries = renderHeadEntries(
+    { teleportHead, assets, content, context: safeContext },
+    request,
+  )
 
   return {
     head: format === 'html' ? entries.map(headEntryHtml).join('') : entries,
     content: cleanContent(content, request.hydrate),
+    ...(Object.hasOwn(safeContext, 'state') && safeContext.state !== undefined
+      ? { state: safeContext.state }
+      : {}),
   }
 }
 
 function renderHeadEntries(
-  { teleportHead, assets }: RenderResult,
-  { hydrate, props, context, template }: Omit<RenderRequest, 'format'>,
+  { teleportHead, assets, context }: RenderResult,
+  { hydrate, template }: Pick<RenderRequest, 'hydrate' | 'template'>,
   includeScripts = hydrate,
 ): HeadEntry[] {
   const entries: HeadEntry[] = []
@@ -94,11 +99,7 @@ function renderHeadEntries(
   }
 
   if (hydrate) {
-    entries.push(hydrationData('vueforge-props', props ?? {}))
-    if (context !== undefined)
-      entries.push(hydrationData('vueforge-context', context))
-    if (template !== undefined)
-      entries.push(hydrationData('vueforge-template', template))
+    entries.push(hydrationData({ context, ...(template ? { template } : {}) }))
   }
 
   if (includeScripts)
@@ -108,18 +109,13 @@ function renderHeadEntries(
 }
 
 function renderHtmlHead(
-  { teleportHead, assets }: RenderResult,
-  { hydrate, props, context, template }: Omit<RenderRequest, 'format'>,
+  { teleportHead, assets, context }: RenderResult,
+  { hydrate, template }: Pick<RenderRequest, 'hydrate' | 'template'>,
   includeScripts = hydrate,
 ) {
   return renderHeadEntries(
-    { teleportHead, assets, content: '' },
-    {
-      hydrate,
-      ...(props === undefined ? {} : { props }),
-      ...(context === undefined ? {} : { context }),
-      ...(template === undefined ? {} : { template }),
-    },
+    { teleportHead, assets, content: '', context },
+    { hydrate, ...(template === undefined ? {} : { template }) },
     includeScripts,
   )
     .map(headEntryHtml)
@@ -132,12 +128,17 @@ export function formatRenderResponse(
   request: RenderRequest,
   { document = {}, development = false }: FormatRenderOptions = {},
 ): FormattedRenderResponse {
+  result.context ??= {}
   if (request.format === 'json') {
     return {
       format: 'json',
       body: {
         head: renderHeadEntries(result, request, development),
         content: cleanContent(result.content, request.hydrate),
+        ...(Object.hasOwn(result.context, 'state') &&
+        result.context.state !== undefined
+          ? { state: result.context.state }
+          : {}),
       },
     }
   }

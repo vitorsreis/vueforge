@@ -103,7 +103,7 @@ export async function productionWorkerRenderer(
     throw error
   }
 
-  const render: AppRender = async (props, context, template) => {
+  const render: AppRender = async (context = {}, template) => {
     if (closed) throw new RenderBusyError()
     const idle = [...slots].find(
       ({ busy, termination }) => !busy && !termination,
@@ -111,7 +111,7 @@ export async function productionWorkerRenderer(
     const slot = idle ?? (slots.size < concurrentLimit ? start() : undefined)
     if (!slot) throw new RenderBusyError()
 
-    const reply = await ask(slot, [props, context, template])
+    const reply = await ask(slot, [context, template])
     if (reply.type === 'error') throw new Error(reply.detail)
     if (reply.type !== 'rendered')
       throw new Error('Unexpected Vueforge SSR worker response.')

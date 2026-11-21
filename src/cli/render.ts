@@ -46,7 +46,7 @@ async function readRequest(maxRequestBytes: number): Promise<unknown> {
   try {
     return JSON.parse(text) as unknown
   } catch {
-    throw new Error('Send a valid JSON object, for example {"props":{}}.')
+    throw new Error('Send a valid JSON context object, for example {}.')
   }
 }
 
@@ -56,6 +56,8 @@ export async function renderProject(
   configFile?: string,
   limitsOverride?: VueforgeConfig['limits'],
   pretty = false,
+  hydrate = false,
+  template?: string,
 ) {
   const writeResponse = process.stdout.write.bind(process.stdout)
   process.stdout.write = process.stderr.write.bind(process.stderr)
@@ -70,40 +72,41 @@ export async function renderProject(
     config.limits = { ...config.limits, ...limitsOverride }
   const limits = resolveRenderLimits(config)
   const sources =
-    config.templates === undefined
+    config.main === undefined
       ? undefined
       : await resolveAppSources(projectRoot, config)
   const request = parseRenderRequest(
     await readRequest(limits.maxRequestBytes),
     config.format ?? 'json',
+    {
+      ...(outputFormat === undefined ? {} : { format: outputFormat }),
+      ...(hydrate ? { hydrate: true } : {}),
+      ...(template === undefined ? {} : { template }),
+    },
   )
   const { render } = await productionRenderer(
     resolveBuildOutputDir(projectRoot, config.build?.outDir),
     resolveAssetBase(config.origin, config.base),
   )
 
-  if (sources?.templates && request.template === undefined) {
+  if (sources?.kind === 'templates' && request.template === undefined) {
     throw new Error(
       '"template" is required when a template catalog is configured.',
     )
   }
   if (
     request.template !== undefined &&
-    sources?.templates !== undefined &&
+    sources?.kind === 'templates' &&
     !Object.hasOwn(sources.templates, request.template)
   ) {
     throw new Error(
       `Unknown template "${request.template}". Choose one of: ${Object.keys(sources.templates).join(', ')}.`,
     )
   }
-  const rendered = await render(
-    request.props,
-    request.context,
-    request.template,
-  )
+  const rendered = await render(request.context, request.template)
   const response = formatRenderResponse(
     rendered,
-    outputFormat === undefined ? request : { ...request, format: outputFormat },
+    request,
     config.document === undefined ? {} : { document: config.document },
   )
   if (formattedResponseBytes(response) > limits.maxOutputBytes) {

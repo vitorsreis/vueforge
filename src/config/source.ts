@@ -4,15 +4,26 @@ import { extname, isAbsolute, relative, resolve, sep } from 'node:path'
 import { normalizePath } from 'vite'
 import type { Component } from 'vue'
 
-import type { VueforgeConfig, VueforgeTemplate } from '../index.js'
+import type {
+  VueforgeAppFactory,
+  VueforgeConfig,
+  VueforgeMain,
+  VueforgeTemplate,
+  VueforgeTemplates,
+  VueforgeTemplateCatalog,
+} from '../index.js'
 
 export type AppTemplate =
   { kind: 'component'; url: string } | { kind: 'template'; code: string }
 
-export interface AppSources {
-  entry?: string
-  template?: AppTemplate
-  templates?: Record<string, AppTemplate>
+export type AppSources =
+  | { kind: 'component'; template: AppTemplate }
+  | { kind: 'entry'; url: string }
+  | { kind: 'factory'; configFile: string }
+  | { kind: 'templates'; templates: Record<string, AppTemplate> }
+
+type ConfigWithMetadata = VueforgeConfig & {
+  __vueforgeConfigFile?: string
 }
 
 function componentFile(value: Component): string | undefined {
@@ -22,6 +33,10 @@ function componentFile(value: Component): string | undefined {
 
 function isInlineSfc(value: string) {
   return /^\s*<(?:template|script|style)(?:\s|>)/.test(value)
+}
+
+function isFactory(value: unknown): value is VueforgeAppFactory {
+  return typeof value === 'function'
 }
 
 function assertProjectPath(
@@ -79,48 +94,23 @@ async function resolveTemplate(
   return { kind: 'component', url: '/' + normalizePath(path) }
 }
 
-async function resolveEntry(root: string, value: unknown): Promise<string> {
-  if (typeof value !== 'string' || !value.trim()) {
-    throw new Error('vueforge.config.ts: entry must be a non-empty file path.')
-  }
-
-  const { file, path } = assertProjectPath(root, 'entry', value)
+async function resolveEntry(root: string, field: string, value: string) {
+  const { file, path } = assertProjectPath(root, field, value)
   if (
     !['.ts', '.tsx', '.js', '.jsx', '.mjs', '.cjs'].includes(
       extname(file).toLowerCase(),
     )
   ) {
     throw new Error(
-      'vueforge.config.ts: entry must point to a .ts, .tsx, .js, .jsx, .mjs, or .cjs file.',
+      `vueforge.config.ts: ${field} must point to a .ts, .tsx, .js, .jsx, .mjs, or .cjs file.`,
     )
   }
   if (!(await stat(file).catch(() => undefined))?.isFile()) {
     throw new Error(
-      `vueforge.config.ts: entry does not exist or is not a file: ${value}`,
+      `vueforge.config.ts: ${field} does not exist or is not a file: ${value}`,
     )
   }
   return '/' + normalizePath(path)
-}
-
-async function templateFiles(
-  root: string,
-  directory: string,
-  prefix = '',
-): Promise<Record<string, VueforgeTemplate>> {
-  const result: Record<string, VueforgeTemplate> = {}
-  for (const item of await readdir(directory, { withFileTypes: true })) {
-    const relativeName = prefix ? `${prefix}/${item.name}` : item.name
-    const file = resolve(directory, item.name)
-    if (item.isDirectory()) {
-      Object.assign(result, await templateFiles(root, file, relativeName))
-      continue
-    }
-    if (!item.isFile() || extname(item.name).toLowerCase() !== '.vue') continue
-    const name = relativeName.slice(0, -'.vue'.length)
-    assertTemplateName(name)
-    result[name] = relative(root, file)
-  }
-  return result
 }
 
 function assertTemplateName(name: string) {
@@ -139,67 +129,174 @@ function assertTemplateName(name: string) {
   }
 }
 
+async function templateFiles(
+  root: string,
+  directory: string,
+  pattern?: RegExp,
+  extension = '.vue',
+  prefix = '',
+): Promise<Record<string, VueforgeTemplate>> {
+  const result: Record<string, VueforgeTemplate> = {}
+  for (const item of await readdir(directory, { withFileTypes: true })) {
+    const relativeName = prefix ? `${prefix}/${item.name}` : item.name
+    const file = resolve(directory, item.name)
+    if (item.isDirectory()) {
+      Object.assign(
+        result,
+        await templateFiles(root, file, pattern, extension, relativeName),
+      )
+      continue
+    }
+    if (!item.isFile() || extname(item.name).toLowerCase() !== extension)
+      continue
+    if (pattern !== undefined) {
+      pattern.lastIndex = 0
+      if (!pattern.test(normalizePath(relativeName))) continue
+    }
+    const name = relativeName.slice(0, -extension.length)
+    assertTemplateName(name)
+    result[name] = relative(root, file)
+  }
+  return result
+}
+
 async function resolveTemplateCatalog(
   root: string,
-  value: string | Record<string, VueforgeTemplate>,
+  value: VueforgeTemplates,
 ): Promise<Record<string, AppTemplate>> {
-  const result: Record<string, AppTemplate> = {}
+  let candidates: Record<string, VueforgeTemplate> = {}
+  let directory: string | undefined
+  let pattern: RegExp | undefined
+  let extension = '.vue'
   if (typeof value === 'string') {
-    const { file } = assertProjectPath(root, 'templates', value)
-    if (!(await stat(file).catch(() => undefined))?.isDirectory()) {
+    directory = value
+  } else if (value instanceof RegExp) {
+    directory = 'src'
+    pattern = value
+  } else if (
+    typeof value === 'object' &&
+    'directory' in value &&
+    typeof value.directory === 'string'
+  ) {
+    const descriptor = value as {
+      directory: string
+      pattern?: RegExp
+      extension?: string
+    }
+    directory = descriptor.directory
+    pattern =
+      descriptor.pattern instanceof RegExp ? descriptor.pattern : undefined
+    extension = descriptor.extension ?? '.vue'
+    if (!/^\.[a-z0-9]+$/i.test(extension)) {
       throw new Error(
-        `vueforge.config.ts: templates is not a directory: ${value}`,
+        'vueforge.config.ts: main.extension must be a file extension such as .vue.',
       )
     }
-    const files = await templateFiles(root, file)
-    if (Object.keys(files).length === 0) {
-      throw new Error(
-        `vueforge.config.ts: templates contains no .vue files: ${value}`,
-      )
-    }
-    value = files
+  } else {
+    candidates = value as VueforgeTemplateCatalog
   }
 
-  for (const [name, template] of Object.entries(value)) {
+  if (directory) {
+    const { file } = assertProjectPath(root, 'main', directory)
+    if (!(await stat(file).catch(() => undefined))?.isDirectory()) {
+      throw new Error(
+        `vueforge.config.ts: main is not a directory: ${directory}`,
+      )
+    }
+    candidates = await templateFiles(root, file, pattern, extension)
+  }
+
+  const result: Record<string, AppTemplate> = {}
+  for (const [name, template] of Object.entries(candidates)) {
     assertTemplateName(name)
-    result[name] = await resolveTemplate(root, `templates.${name}`, template)
+    result[name] = await resolveTemplate(root, `main.${name}`, template)
   }
   if (Object.keys(result).length === 0) {
     throw new Error(
-      'vueforge.config.ts: templates must contain at least one template.',
+      'vueforge.config.ts: main did not select any Vue templates.',
     )
   }
   return result
+}
+
+async function resolveMain(
+  root: string,
+  value: VueforgeMain,
+  configFile?: string,
+): Promise<AppSources> {
+  if (isFactory(value)) {
+    if (!configFile) {
+      throw new Error(
+        'vueforge.config.ts: a direct main factory requires a configuration file.',
+      )
+    }
+    return { kind: 'factory', configFile }
+  }
+
+  if (value instanceof RegExp) {
+    return {
+      kind: 'templates',
+      templates: await resolveTemplateCatalog(root, value),
+    }
+  }
+
+  if (typeof value === 'object') {
+    const component = componentFile(value as Component)
+    if (component) {
+      return {
+        kind: 'component',
+        template: await resolveTemplate(root, 'main', value as Component),
+      }
+    }
+    if ('directory' in value) {
+      return {
+        kind: 'templates',
+        templates: await resolveTemplateCatalog(root, value),
+      }
+    }
+    return {
+      kind: 'templates',
+      templates: await resolveTemplateCatalog(root, value),
+    }
+  }
+
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error('vueforge.config.ts: main must be a non-empty Vue source.')
+  }
+  if (isInlineSfc(value)) {
+    return {
+      kind: 'component',
+      template: await resolveTemplate(root, 'main', value),
+    }
+  }
+
+  const { file } = assertProjectPath(root, 'main', value)
+  const fileStat = await stat(file).catch(() => undefined)
+  if (fileStat?.isDirectory()) {
+    return {
+      kind: 'templates',
+      templates: await resolveTemplateCatalog(root, value),
+    }
+  }
+  if (extname(file).toLowerCase() === '.vue') {
+    return {
+      kind: 'component',
+      template: await resolveTemplate(root, 'main', value),
+    }
+  }
+  return { kind: 'entry', url: await resolveEntry(root, 'main', value) }
 }
 
 export async function resolveAppSources(
   root: string,
   config: VueforgeConfig,
 ): Promise<AppSources> {
-  const configured = [
-    config.entry !== undefined,
-    config.template !== undefined,
-    config.templates !== undefined,
-  ].filter(Boolean).length
-  if (configured > 1) {
-    throw new Error(
-      'vueforge.config.ts: configure only one of entry, template, or templates.',
-    )
-  }
-
-  if (config.entry !== undefined) {
-    return { entry: await resolveEntry(root, config.entry) }
-  }
-  if (config.templates !== undefined) {
-    return { templates: await resolveTemplateCatalog(root, config.templates) }
-  }
-  return {
-    template: await resolveTemplate(
-      root,
-      'template',
-      config.template ?? 'src/App.vue',
-    ),
-  }
+  const metadata = config as ConfigWithMetadata
+  return resolveMain(
+    root,
+    config.main ?? 'src/App.vue',
+    metadata.__vueforgeConfigFile,
+  )
 }
 
 export async function resolveAppSource(
@@ -207,9 +304,9 @@ export async function resolveAppSource(
   config: VueforgeConfig,
 ): Promise<AppTemplate | { kind: 'entry'; url: string }> {
   const sources = await resolveAppSources(root, config)
-  if (sources.entry) return { kind: 'entry', url: sources.entry }
-  if (sources.template) return sources.template
+  if (sources.kind === 'entry') return { kind: 'entry', url: sources.url }
+  if (sources.kind === 'component') return sources.template
   throw new Error(
-    'vueforge.config.ts: resolveAppSource cannot represent a template catalog.',
+    'vueforge.config.ts: resolveAppSource cannot represent a template catalog or factory.',
   )
 }

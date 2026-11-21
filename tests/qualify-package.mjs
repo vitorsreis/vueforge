@@ -14,7 +14,10 @@ const root = fileURLToPath(new URL('../', import.meta.url))
 const npm = env.npm_execpath
 const [archive, ...extra] = argv.slice(2)
 
-assert.match(versions.node, /^26\./, 'Qualification requires Node.js 26')
+assert.ok(
+  Number.parseInt(versions.node, 10) >= 24,
+  'Qualification requires Node.js 24 or newer',
+)
 assert.ok(npm, 'Run npm run test:qualification')
 assert.ok(
   extra.length === 0 && (!archive || extname(archive) === '.tgz'),

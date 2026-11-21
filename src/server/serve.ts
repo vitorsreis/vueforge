@@ -20,6 +20,7 @@ import { createNodeServer, startNodeAdapter } from './adapter/node.js'
 import { createCorsMiddleware } from './http/cors.js'
 import { serveStdio } from './transports/stdio.js'
 import type { ServerTransport } from './transports/http.js'
+import { queryBoolean } from '../render/query.js'
 
 const require = createRequire(import.meta.url)
 const { version } = require('../../package.json') as { version: string }
@@ -56,7 +57,7 @@ function handlerOptions(
     ...limits,
     defaultFormat: config.format ?? ('json' as const),
     ...(config.document === undefined ? {} : { document: config.document }),
-    ...(sources?.templates === undefined
+    ...(sources?.kind !== 'templates'
       ? {}
       : {
           requireTemplate: true,
@@ -85,7 +86,7 @@ export async function serveProject(
   const transport = transportFromOptions(root, config, options)
   const limits = resolveRenderLimits(config)
   const sources =
-    dev || config.templates !== undefined
+    dev || config.main !== undefined
       ? await resolveAppSources(root, config)
       : undefined
 
@@ -145,8 +146,7 @@ export async function serveProject(
     response: express.Response,
     value: unknown,
   ) {
-    const pretty =
-      request.query.pretty === '1' || request.query.pretty === 'true'
+    const pretty = queryBoolean(request.originalUrl, 'pretty')
     response
       .type('json')
       .send(JSON.stringify(value, null, pretty ? 2 : undefined))

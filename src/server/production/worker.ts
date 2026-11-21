@@ -43,7 +43,7 @@ async function renderAndReply(request: WorkerRequest) {
     if (request === undefined) {
       reply = { type: 'ready' }
     } else {
-      const { content, teleportHead } = await render(...request)
+      const { content, teleportHead, context } = await render(...request)
       if (
         Buffer.byteLength(content) + Buffer.byteLength(teleportHead) >
         maxOutputBytes
@@ -52,7 +52,7 @@ async function renderAndReply(request: WorkerRequest) {
           `Vue SSR exceeds the ${String(maxOutputBytes)} byte output limit.`,
         )
       }
-      reply = { type: 'rendered', result: { content, teleportHead } }
+      reply = { type: 'rendered', result: { content, teleportHead, context } }
     }
   } catch (error) {
     const detail =

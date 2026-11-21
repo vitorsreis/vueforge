@@ -4,6 +4,7 @@ import type { ErrorRequestHandler } from 'express'
 import { MAX_REQUEST_BYTES } from '../../render/request.js'
 import { createRenderHandler, type RenderHandlerOptions } from './handler.js'
 import type { Render } from '../../render/renderer.js'
+import { queryBoolean, queryValue } from '../../render/query.js'
 
 type RenderRouteOptions = RenderHandlerOptions
 
@@ -21,7 +22,7 @@ function renderErrorHandler(): ErrorRequestHandler {
     if (type === 'entity.parse.failed') {
       res
         .status(400)
-        .json({ error: 'Send a valid JSON object, for example {"props":{}}.' })
+        .json({ error: 'Send a valid JSON context object, for example {}.' })
     } else if (type === 'entity.too.large') {
       res.status(413).json({
         error: 'Request body exceeds 64 KiB. Reduce the JSON payload.',
@@ -54,13 +55,29 @@ export function renderRoute(
       limit: options.maxRequestBytes ?? MAX_REQUEST_BYTES,
     }),
     async (req, res) => {
-      const query =
-        typeof req.query.error === 'string' ? req.query.error : undefined
-      const pretty = req.query.pretty === '1' || req.query.pretty === 'true'
+      const formatValue = queryValue(req.originalUrl, 'format')
+      if (
+        formatValue !== undefined &&
+        formatValue !== 'html' &&
+        formatValue !== 'json'
+      ) {
+        res.status(400).json({
+          error: 'The format query parameter must be "html" or "json".',
+        })
+        return
+      }
+      const errorValue = queryValue(req.originalUrl, 'error')
+      const pretty = queryBoolean(req.originalUrl, 'pretty')
       const response = await handleRender({
         body: req.body,
         accept: req.get('accept'),
-        errorFormat: query === 'html' || query === 'json' ? query : undefined,
+        format: formatValue,
+        hydrate: queryBoolean(req.originalUrl, 'hydrate'),
+        template: queryValue(req.originalUrl, 'template'),
+        errorFormat:
+          errorValue === 'html' || errorValue === 'json'
+            ? errorValue
+            : undefined,
       })
       res.status(response.status).set(response.headers ?? {})
       if (pretty && typeof response.body !== 'string') {

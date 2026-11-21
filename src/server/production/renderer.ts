@@ -127,9 +127,13 @@ export async function productionRenderer(
   })
 
   const { render: renderApp, close } = await load(pathToFileURL(entry))
-  const render: Render = async (props, context, template) => {
-    const { content, teleportHead } = await renderApp(props, context, template)
-    return { content, teleportHead, assets }
+  const render: Render = async (context = {}, template) => {
+    const {
+      content,
+      teleportHead,
+      context: renderedContext,
+    } = await renderApp(context, template)
+    return { content, teleportHead, context: renderedContext, assets }
   }
 
   return {

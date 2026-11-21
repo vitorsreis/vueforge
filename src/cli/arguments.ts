@@ -8,6 +8,8 @@ export interface CliArguments {
   config?: string
   dev: boolean
   format?: RenderOutputFormat
+  hydrate: boolean
+  template?: string
   pretty: boolean
   help: boolean
   host?: string
@@ -86,6 +88,8 @@ export function parseCliArguments(args: string[]): CliArguments {
         config: { type: 'string', short: 'c' },
         dev: { type: 'boolean' },
         format: { type: 'string', short: 'f' },
+        hydrate: { type: 'boolean' },
+        template: { type: 'string' },
         pretty: { type: 'boolean' },
         help: { type: 'boolean', short: 'h' },
         host: { type: 'string' },
@@ -137,6 +141,16 @@ export function parseCliArguments(args: string[]): CliArguments {
       'The --pretty option belongs to the "render" command.',
     )
   }
+  if (parsed.values.hydrate && selectedCommand !== 'render') {
+    throw new CliUsageError(
+      'The --hydrate option belongs to the "render" command.',
+    )
+  }
+  if (parsed.values.template !== undefined && selectedCommand !== 'render') {
+    throw new CliUsageError(
+      'The --template option belongs to the "render" command.',
+    )
+  }
 
   if (
     parsed.values['max-request-bytes'] !== undefined &&
@@ -168,6 +182,7 @@ export function parseCliArguments(args: string[]): CliArguments {
     dev: parsed.values.dev ?? false,
     help: parsed.values.help ?? false,
     pretty: parsed.values.pretty ?? false,
+    hydrate: parsed.values.hydrate ?? false,
     stdio: parsed.values.stdio ?? false,
     version: parsed.values.version ?? false,
   }
@@ -179,6 +194,8 @@ export function parseCliArguments(args: string[]): CliArguments {
     const format = outputFormat(parsed.values.format)
     if (format !== undefined) result.format = format
   }
+  if (parsed.values.template !== undefined)
+    result.template = parsed.values.template
   if (parsed.values.host !== undefined) result.host = parsed.values.host
   if (parsed.values.port !== undefined) result.port = parsed.values.port
   if (parsed.values.unix !== undefined) result.unix = parsed.values.unix

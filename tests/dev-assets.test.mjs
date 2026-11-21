@@ -19,7 +19,7 @@ test('development compiles inline Vue templates with relative imports and CSS mo
     const renderer = await developmentRenderer(
       root,
       {
-        template: `<script setup>
+        main: `<script setup>
 import Child from './Child.vue'
 defineProps(['context'])
 </script>
@@ -32,10 +32,9 @@ defineProps(['context'])
       0,
     )
     try {
-      const result = await renderer.render(
-        { context: { title: 'Props' } },
-        { title: 'Request' },
-      )
+      const result = await renderer.render({
+        props: { context: { title: 'Request' } },
+      })
       assert.match(result.content, /<p>Child<\/p>Request<\/main>/)
       const cssClass = /class="([^"]+)"/.exec(result.content)?.[1]
       assert.ok(cssClass)
@@ -100,7 +99,7 @@ defineProps({ show: Boolean, unused: Boolean })
     try {
       const [initial, async] = await Promise.all([
         renderer.render(),
-        renderer.render({ show: true }),
+        renderer.render({ props: { show: true } }),
       ])
       assert.match(
         initial.teleportHead,
@@ -144,7 +143,7 @@ defineProps({ show: Boolean, unused: Boolean })
         'https://client.example',
       )
       const entryCode = await entry.text()
-      assert.match(entryCode, /vueforge-props/)
+      assert.match(entryCode, /__VUEFORGE__/)
       assert.match(entryCode, /getElementById\("custom-root"\)/)
       assert.match(entryCode, /vite:error/)
       assert.match(entryCode, /data-vueforge-error-overlay/)

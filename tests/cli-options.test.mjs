@@ -118,10 +118,15 @@ test('parses transport and render overrides', () => {
     'render',
     '-f',
     'html',
+    '--hydrate',
+    '--template',
+    'invoice',
     '--max-request-bytes',
     '128',
   ])
   assert.equal(render.format, 'html')
+  assert.equal(render.hydrate, true)
+  assert.equal(render.template, 'invoice')
   assert.deepEqual(render.limits, { maxRequestBytes: 128 })
 })
 
@@ -171,7 +176,7 @@ test('loads a custom configuration file and supports explicit render formats', a
   const json = run(
     cwd,
     ['render', '--config', 'config/vueforge.local.ts', '--format', 'json'],
-    '{"format":"html","props":{"title":"JSON"}}',
+    '{"props":{"title":"JSON"}}',
   )
   assert.equal(json.status, 0, json.stderr)
   assert.deepEqual(JSON.parse(json.stdout), {

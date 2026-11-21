@@ -32,12 +32,16 @@ async function project(t, config, files = {}) {
 }
 
 function run(cwd, command, request) {
-  const result = spawnSync(execPath, [cli, command], {
-    cwd,
-    input: JSON.stringify(request),
-    encoding: 'utf8',
-    timeout: 30000,
-  })
+  const result = spawnSync(
+    execPath,
+    [cli, ...(Array.isArray(command) ? command : [command])],
+    {
+      cwd,
+      input: JSON.stringify(request),
+      encoding: 'utf8',
+      timeout: 30000,
+    },
+  )
   assert.ifError(result.error)
   return result
 }
@@ -76,8 +80,8 @@ async function serve(cwd, verify) {
       await delay(50)
     }
 
-    await verify((request) =>
-      fetch(origin + '/render', {
+    await verify((request, path = '/render') =>
+      fetch(origin + path, {
         method: 'POST',
         headers: { 'content-type': 'application/json' },
         body: JSON.stringify(request),
@@ -101,16 +105,16 @@ const template = [
 
 const entry = [
   "import { createSSRApp, h } from 'vue'",
-  'export default async (context, props) => {',
+  'export default async (context) => {',
   '  await new Promise((resolve) => setTimeout(resolve, context?.delay ?? 0))',
-  "  return createSSRApp({ render: () => h('h1', (props?.['display-title'] ?? 'Untitled') + ' ' + (context?.label ?? 'anonymous')) })",
+  "  return createSSRApp({ render: () => h('h1', (context?.props?.['display-title'] ?? 'Untitled') + ' ' + (context?.label ?? 'anonymous')) })",
   '}',
 ].join('\n')
 
 for (const { name, config, files, content } of [
   {
     name: 'component entry',
-    config: { template: './src/Chosen.vue' },
+    config: { main: './src/Chosen.vue' },
     files: {
       'src/Chosen.vue': [
         '<script>',
@@ -127,20 +131,20 @@ for (const { name, config, files, content } of [
   },
   {
     name: 'template',
-    config: { template },
+    config: { main: template },
     files: { 'LocalChild.vue': '<template><span>Welcome</span></template>' },
     content:
       /^<main class="inline" data-v-\w+><span(?: data-v-\w+)?>Welcome<\/span>Hello Ada<\/main>$/,
   },
   {
     name: 'entry',
-    config: { entry: './src/custom-entry.ts' },
+    config: { main: './src/custom-entry.ts' },
     files: { 'src/custom-entry.ts': entry },
     content: /^<h1>Hello Ada<\/h1>$/,
   },
   {
     name: 'named Vue SSR factory',
-    config: { entry: './src/app.ts' },
+    config: { main: './src/app.ts' },
     files: {
       'src/app.ts': [
         "import { createSSRApp, h } from 'vue'",
@@ -164,10 +168,9 @@ for (const { name, config, files, content } of [
           'display-title': 'Hello',
           greeting: 'Welcome',
           'data-request-note': 'External',
-          context: { label: 'Shadowed' },
+          context: { label: 'Ada' },
         },
-        context: { label: 'Ada' },
-        format: 'json',
+        label: 'Ada',
       }
 
       await serve(cwd, async (post) => {
@@ -176,7 +179,7 @@ for (const { name, config, files, content } of [
         const result = await response.json()
         assert.match(result.content, content)
         assert.ok(
-          result.head.every(({ attrs }) => attrs?.id !== 'vueforge-context'),
+          result.head.every(({ attrs }) => attrs?.id !== '__VUEFORGE__'),
         )
         if (name === 'template') {
           const style = result.head.find(({ tag }) => tag === 'style')
@@ -208,9 +211,9 @@ for (const { name, config, files, content } of [
 test('validates configured render sources before building', async (t) => {
   const cwd = await project(t, {})
   for (const [config, expected] of [
-    [{ template: ' ' }, /\btemplate\b/i],
-    [{ template: false }, /\btemplate\b/i],
-    [{ template: [] }, /\btemplate\b/i],
+    [{ main: ' ' }, /\bmain\b/i],
+    [{ main: false }, /\bmain\b/i],
+    [{ main: [] }, /\bmain\b/i],
   ]) {
     await writeFile(
       join(cwd, 'vueforge.config.ts'),
@@ -276,17 +279,17 @@ test(
   async (t) => {
     const cwd = await project(
       t,
-      { entry: './src/custom-entry.ts' },
+      { main: './src/custom-entry.ts' },
       { 'src/custom-entry.ts': entry },
     )
     await serve(cwd, async (post) => {
-      const invalid = await post({ context: [] })
+      const invalid = await post([])
       assert.equal(invalid.status, 400)
-      assert.match((await invalid.json()).error, /context.*JSON object/)
+      assert.match((await invalid.json()).error, /request body.*JSON object/)
 
       const [first, second, noContext] = await Promise.all([
-        post({ context: { label: 'Ada', delay: 80 } }),
-        post({ context: { label: 'Lin' } }),
+        post({ label: 'Ada', delay: 80 }),
+        post({ label: 'Lin' }),
         post({}),
       ])
       for (const [response, label] of [
@@ -308,18 +311,16 @@ test(
       }
 
       const context = { label: 'Ada', text: 'A < B & C > D' }
-      const response = await post({ context, hydrate: true, format: 'json' })
+      const response = await post(context, '/render?hydrate=on&format=json')
       assert.equal(response.status, 200, await response.clone().text())
       const { head } = await response.json()
-      const index = head.findIndex(
-        ({ attrs }) => attrs?.id === 'vueforge-context',
-      )
+      const index = head.findIndex(({ attrs }) => attrs?.id === '__VUEFORGE__')
       assert.ok(index >= 0)
       const data = head[index]
       assert.equal(data.tag, 'script')
       assert.equal(data.attrs.type, 'application/json')
       assert.doesNotMatch(data.content, /</)
-      assert.deepEqual(JSON.parse(data.content), context)
+      assert.deepEqual(JSON.parse(data.content), { context })
       assert.ok(
         index <
           head.findIndex(({ attrs }) => attrs?.src === '/@vueforge/client'),
@@ -334,7 +335,7 @@ test(
   async (t) => {
     const cwd = await project(
       t,
-      { templates: 'src/templates' },
+      { main: 'src/templates' },
       {
         'src/templates/home.vue':
           '<template><h1>Home {{ title }}</h1></template><script setup>defineProps({ title: String })</script>',
@@ -343,14 +344,14 @@ test(
       },
     )
     await serve(cwd, async (post) => {
-      const response = await post({
-        template: 'invoice',
-        props: { number: 'A-42' },
-      })
+      const response = await post(
+        { props: { number: 'A-42' } },
+        '/render?template=invoice',
+      )
       assert.equal(response.status, 200, await response.clone().text())
       assert.equal((await response.json()).content, '<h1>Invoice A-42</h1>')
 
-      const missing = await post({ props: { number: 'A-42' } })
+      const missing = await post({ number: 'A-42' })
       assert.equal(missing.status, 400)
       assert.match((await missing.json()).error, /template.*required/i)
     })
@@ -363,7 +364,7 @@ test(
   async (t) => {
     const cwd = await project(
       t,
-      { templates: 'src/templates' },
+      { main: 'src/templates' },
       {
         'src/templates/invoice.vue':
           '<template><h1>Invoice {{ number }}</h1></template><script setup>defineProps({ number: String })</script>',
@@ -371,8 +372,7 @@ test(
     )
     const build = run(cwd, 'build', {})
     assert.equal(build.status, 0, build.stderr)
-    const render = run(cwd, 'render', {
-      template: 'invoice',
+    const render = run(cwd, ['render', '--template', 'invoice'], {
       props: { number: 'A-42' },
     })
     assert.equal(render.status, 0, render.stderr)

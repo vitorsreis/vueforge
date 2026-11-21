@@ -37,6 +37,8 @@ async function main() {
       args.config,
       args.limits,
       args.pretty,
+      args.hydrate,
+      args.template,
     )
     return
   }

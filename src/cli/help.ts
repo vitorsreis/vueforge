@@ -66,6 +66,8 @@ Render one request from standard input using the production build.
 
 Options:
   -f, --format <format> Output format: json (default) or html
+  --hydrate             Include the browser hydration payload
+  --template <name>     Select a named template catalog entry
   --pretty              Indent JSON output
   --max-request-bytes <bytes>
                        Maximum request body size (positive integer)
@@ -75,12 +77,12 @@ Options:
   -v, --version        Show version
 
 Input:
-  Send one JSON object through standard input. The request may include props,
-  context, format, and hydrate.
+  Send one JSON context object through standard input. Render controls are
+  command options and the context is passed unchanged to the Vue app.
 
 Examples:
   echo '{"props":{"title":"Hello"}}' | vueforge render
-  vueforge render --format html < request.json`
+  vueforge render --format html --hydrate < request.json`
   }
 
   return `vueforge - Vue SSR renderer for any backend

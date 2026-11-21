@@ -141,7 +141,7 @@ export async function serveStdio({
         body = JSON.parse(line.value) as unknown
       } catch {
         await writeLine(output, {
-          error: 'Send one valid JSON request per line.',
+          error: 'Send one valid JSON context object per line.',
         })
         continue
       }

@@ -29,7 +29,7 @@ test('production records the files from the current build and serves copied publ
   )
 
   const config = {
-    template: `<script setup>
+    main: `<script setup>
 import { defineAsyncComponent } from 'vue'
 const Details = defineAsyncComponent(() => import('./Details.vue'))
 </script>

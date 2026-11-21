@@ -89,11 +89,8 @@ async function checkRenderResponses(url, development) {
   )
 
   for (const [body, status, message] of [
-    ['{', 400, /JSON object/],
-    ['{"format":"xml"}', 400, /format/],
-    ['{"hydrate":1}', 400, /hydrate/],
+    ['{', 400, /JSON context object/],
     ['[]', 400, /request body.*object/i],
-    ['{"props":[]}', 400, /"props" must be a JSON object/],
     [JSON.stringify({ title: 'x'.repeat(65536) }), 413, /64 KiB/],
   ]) {
     const response = await post(url, body)

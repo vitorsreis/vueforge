@@ -106,7 +106,7 @@ test('serves newline-delimited JSON through stdio and continues after errors', a
   const lines = Buffer.concat(chunks).toString('utf8').trim().split('\n')
   const parsed = lines.map((line) => JSON.parse(line))
   assert.deepEqual(parsed[0], { ok: true, title: 'First' })
-  assert.equal(parsed[1].error, 'Send one valid JSON request per line.')
+  assert.equal(parsed[1].error, 'Send one valid JSON context object per line.')
   assert.deepEqual(parsed[2], { ok: true, title: 'Second' })
 })
 

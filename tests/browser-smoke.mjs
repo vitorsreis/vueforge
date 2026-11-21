@@ -48,21 +48,22 @@ async function startBackend(renderer, cwd) {
             if (req.url !== '/') return next()
 
             try {
-              const response = await fetch(renderer + '/render', {
-                method: 'POST',
-                headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({
-                  context,
-                  props: {
-                    title: context.title,
-                    'initial-count': context.initialCount,
-                    'data-request-note': 'External',
-                  },
-                  hydrate: true,
-                  format: 'html',
-                }),
-                signal: AbortSignal.timeout(5000),
-              })
+              const response = await fetch(
+                renderer + '/render?format=html&hydrate=on',
+                {
+                  method: 'POST',
+                  headers: { 'content-type': 'application/json' },
+                  body: JSON.stringify({
+                    ...context,
+                    props: {
+                      title: context.title,
+                      'initial-count': context.initialCount,
+                      'data-request-note': 'External',
+                    },
+                  }),
+                  signal: AbortSignal.timeout(5000),
+                },
+              )
               const document = await response.text()
               assert.equal(response.status, 200, document)
               assert.match(document, /<title>External renderer 2<\/title>/)
@@ -262,7 +263,7 @@ try {
       await cp(fixture, join(cwd, 'src'), { recursive: true })
       await writeFile(
         join(cwd, 'vueforge.config.ts'),
-        `export default { ${path.endsWith('.vue') ? 'template' : 'entry'}: ${JSON.stringify(path)} }`,
+        `export default { main: ${JSON.stringify(path)} }`,
       )
       // Production runs before the development check edits the fixture's styles.
       await checkBrowser(browser, cwd, false, name)

@@ -116,30 +116,48 @@ interface ProjectOptions {
   vite?: UserConfig
 }
 
-/** Vue component or inline SFC accepted by `template`. */
+/** Vue component, file path, or inline SFC accepted by `main`. */
 export type VueforgeTemplate = string | Component
 
-/** A request-scoped Vue application factory used by `entry`. */
+/** Request data passed to a Vueforge application factory. */
+export type VueforgeContext = Record<string, unknown>
+
+/** A request-scoped Vue application factory used by `main`. */
 export type VueforgeAppFactory<
-  Context = Record<string, unknown>,
-  Props = Record<string, unknown>,
+  Context extends VueforgeContext = VueforgeContext,
   App = object,
-> = (context: Context, props: Props) => App | Promise<App>
+> = (context: Context) => App | Promise<App>
+
+/** Named Vue component sources used by a main template catalog. */
+export type VueforgeTemplateCatalog = Record<string, VueforgeTemplate>
+
+/**
+ * Template catalog input accepted by `main`.
+ *
+ * A directory descriptor scans Vue files below `directory`. `pattern` is
+ * matched against each project-relative file name and `extension` defaults to
+ * `.vue`.
+ */
+export type VueforgeTemplates =
+  | string
+  | RegExp
+  | { directory: string; pattern?: RegExp; extension?: string }
+  | VueforgeTemplateCatalog
+
+/** The single application source selected by `vueforge.config.ts`. */
+export type VueforgeMain =
+  VueforgeTemplates | VueforgeTemplate | VueforgeAppFactory
 
 /**
  * Project settings read from the default export of `vueforge.config.ts`.
  *
- * `template` selects one Vue component. `entry` selects a module that creates
- * the Vue app for each request. `templates` selects a named catalog of Vue
- * components and requires the request body to include `template`.
+ * `main` selects the Vue application source. A string can be a Vue SFC, an
+ * application entry module, or a directory of Vue templates. A regular
+ * expression selects Vue files below `src`. An object selects a named catalog.
  *
- * When all three options are omitted, Vueforge uses `src/App.vue`.
+ * When `main` is omitted, Vueforge uses `src/App.vue`.
  */
-export type VueforgeConfig = ProjectOptions & {
-  template?: VueforgeTemplate
-  entry?: string
-  templates?: string | Record<string, VueforgeTemplate>
-}
+export type VueforgeConfig = ProjectOptions & { main?: VueforgeMain }
 
 /**
  * Provides type checking and editor completion for a Vueforge configuration.
@@ -154,7 +172,7 @@ export type VueforgeConfig = ProjectOptions & {
  * import { defineConfig } from '@vitorsreis/vueforge'
  *
  * export default defineConfig({
- *   template: 'src/App.vue',
+ *   main: 'src/App.vue',
  *   server: { port: 4300 },
  *   tempDir: '.cache/vueforge',
  *   build: { outDir: 'dist/vueforge' },
@@ -176,17 +194,14 @@ export function defineConfig(config: VueforgeConfig): VueforgeConfig {
  * import { createSSRApp } from 'vue'
  * import { createVueforgeApp } from '@vitorsreis/vueforge'
  *
- * export default createVueforgeApp((context, props) =>
- *   createSSRApp(App, { ...props, user: context.user }),
+ * export default createVueforgeApp((context) =>
+ *   createSSRApp(App, { ...context.props, user: context.user }),
  * )
  * ```
  */
 export function createVueforgeApp<
-  Context = Record<string, unknown>,
-  Props = Record<string, unknown>,
+  Context extends VueforgeContext = VueforgeContext,
   App = object,
->(
-  factory: VueforgeAppFactory<Context, Props, App>,
-): VueforgeAppFactory<Context, Props, App> {
+>(factory: VueforgeAppFactory<Context, App>): VueforgeAppFactory<Context, App> {
   return factory
 }

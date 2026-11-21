@@ -4,8 +4,8 @@ import test from 'node:test'
 
 import { createRenderHandler } from '../dist/server/render/handler.js'
 
-const render = async (props) => ({
-  content: `<h1>${props?.title ?? 'Default'}</h1>`,
+const render = async (context) => ({
+  content: `<h1>${context?.props?.title ?? 'Default'}</h1>`,
   teleportHead: '',
   assets: [],
 })
@@ -23,10 +23,10 @@ test('framework-neutral render handler returns successful responses', async () =
 
 test('framework-neutral render handler maps input errors', async () => {
   const handle = createRenderHandler(render)
-  const response = await handle({ body: { props: [] } })
+  const response = await handle({ body: [] })
 
   assert.equal(response.status, 400)
-  assert.match(response.body.error, /props.*JSON object/i)
+  assert.match(response.body.error, /request body.*JSON object/i)
 })
 
 test('enforces the output limit after response formatting', async () => {

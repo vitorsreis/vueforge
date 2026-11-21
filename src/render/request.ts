@@ -6,8 +6,7 @@ export interface RenderRequest {
   format: RenderOutputFormat
   hydrate: boolean
   template?: string
-  props?: Record<string, unknown>
-  context?: Record<string, unknown>
+  context: Record<string, unknown>
 }
 
 export class RenderInputError extends Error {
@@ -21,49 +20,32 @@ function isRecord(value: unknown): value is Record<string, unknown> {
 export function parseRenderRequest(
   value: unknown,
   defaultFormat: RenderOutputFormat = 'json',
+  options: {
+    format?: RenderOutputFormat
+    hydrate?: boolean
+    template?: string
+  } = {},
 ): RenderRequest {
   if (!isRecord(value)) {
     throw new RenderInputError(
-      'The request body must be a JSON object. Send {} with Content-Type: application/json to use default props.',
+      'The request body must be a JSON object. Send {} with Content-Type: application/json to use an empty context.',
     )
   }
 
-  const {
-    props,
-    context,
-    template,
-    format = defaultFormat,
-    hydrate = false,
-  } = value
-  if (props !== undefined && !isRecord(props)) {
-    throw new RenderInputError(
-      '"props" must be a JSON object, for example {"props":{"title":"Hello"}}.',
-    )
-  }
-
-  if (context !== undefined && !isRecord(context)) {
-    throw new RenderInputError('"context" must be a JSON object.')
-  }
-
-  if (
-    template !== undefined &&
-    (typeof template !== 'string' || !template.trim())
-  ) {
-    throw new RenderInputError(
-      '"template" must be a non-empty template name when a template catalog is configured.',
-    )
-  }
+  const format: string = options.format ?? defaultFormat
+  const hydrate = options.hydrate ?? false
+  const template = options.template
 
   if (format !== 'html' && format !== 'json') {
     throw new RenderInputError('"format" must be "html" or "json".')
   }
 
-  if (typeof hydrate !== 'boolean') {
-    throw new RenderInputError('"hydrate" must be a boolean.')
+  if (template !== undefined && !template.trim()) {
+    throw new RenderInputError(
+      'The template query parameter must be a non-empty template name.',
+    )
   }
-  const request: RenderRequest = { format, hydrate }
+  const request: RenderRequest = { format, hydrate, context: value }
   if (template !== undefined) request.template = template
-  if (props !== undefined) request.props = props
-  if (context !== undefined) request.context = context
   return request
 }

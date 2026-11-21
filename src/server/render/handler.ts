@@ -22,6 +22,9 @@ import Negotiator from 'negotiator'
 export interface RenderHandlerRequest {
   body: unknown
   accept?: string | undefined
+  format?: RenderOutputFormat | undefined
+  hydrate?: boolean | undefined
+  template?: string | undefined
   errorFormat?: 'html' | 'json' | undefined
 }
 
@@ -65,15 +68,6 @@ function negotiateFormat(
   return mediaType === 'text/html' ? 'html' : 'json'
 }
 
-function hasExplicitFormat(value: unknown): value is Record<string, unknown> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.prototype.hasOwnProperty.call(value, 'format')
-  )
-}
-
 function boundRender(
   render: Render,
   {
@@ -87,7 +81,7 @@ function boundRender(
   const concurrentLimit = maxConcurrent ?? maxConcurrentRenders
   const timeoutLimit = timeoutMs ?? renderTimeoutMs
 
-  return async (props, context) => {
+  return async (context, template) => {
     if (active >= concurrentLimit) throw new RenderBusyError()
     active++
 
@@ -99,7 +93,7 @@ function boundRender(
       }, timeoutLimit)
     })
     const rendering = Promise.resolve()
-      .then(() => render(props, context))
+      .then(() => render(context, template))
       .finally(() => {
         active--
       })
@@ -199,7 +193,28 @@ export function createRenderHandler(
     request: RenderHandlerRequest,
   ): Promise<RenderHandlerResponse> => {
     try {
-      const parsed = parseRenderRequest(request.body)
+      const explicitFormat = request.format !== undefined
+      const format =
+        request.format ?? negotiateFormat(request.accept, defaultFormat)
+      if (format === undefined) {
+        return {
+          status: 406,
+          headers: {
+            'Content-Type': 'application/json; charset=utf-8',
+            Vary: 'Accept',
+          },
+          body: {
+            error: 'Accept must allow application/json or text/html.',
+          },
+        }
+      }
+      const parsed = parseRenderRequest(request.body, format, {
+        format,
+        ...(request.hydrate === undefined ? {} : { hydrate: request.hydrate }),
+        ...(request.template === undefined
+          ? {}
+          : { template: request.template }),
+      })
       if (options.requireTemplate && parsed.template === undefined) {
         throw new RenderInputError(
           '"template" is required when a template catalog is configured.',
@@ -214,36 +229,14 @@ export function createRenderHandler(
           `Unknown template "${parsed.template}". Choose one of: ${options.templateNames.join(', ')}.`,
         )
       }
-      const explicitFormat = hasExplicitFormat(request.body)
-      const format = explicitFormat
-        ? undefined
-        : negotiateFormat(request.accept, defaultFormat)
-      if (!explicitFormat && format === undefined) {
-        return {
-          status: 406,
-          headers: {
-            'Content-Type': 'application/json; charset=utf-8',
-            Vary: 'Accept',
-          },
-          body: {
-            error: 'Accept must allow application/json or text/html.',
-          },
-        }
-      }
-      const input =
-        explicitFormat || format === undefined ? parsed : { ...parsed, format }
-      const result = await renderRequest(
-        input.props,
-        input.context,
-        input.template,
-      )
+      const result = await renderRequest(parsed.context, parsed.template)
       const formatOptions = {
         ...(document === undefined ? {} : { document }),
         ...(options.development === undefined
           ? {}
           : { development: options.development }),
       }
-      const response = formatRenderResponse(result, input, formatOptions)
+      const response = formatRenderResponse(result, parsed, formatOptions)
       if (formattedResponseBytes(response) > maxOutputBytes) {
         throw new RenderOutputLimitError(maxOutputBytes)
       }

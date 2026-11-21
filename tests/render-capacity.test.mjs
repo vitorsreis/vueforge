@@ -21,8 +21,8 @@ test('a timed-out development render holds its slot until it settles', async (t)
     .use(
       '/render',
       renderRoute(
-        async (props) => {
-          if (props?.defer) {
+        async (context) => {
+          if (context?.props?.defer) {
             started.resolve()
             await finished.promise
           }
@@ -70,9 +70,9 @@ test('production can replace a worker after a synchronous render overruns its de
   await writeFile(
     entry,
     `import { threadId } from 'node:worker_threads'
-    export async function render(props, context) {
-      if (props?.defer) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_200)
-      if (props?.oversized) return { content: '\u00e9'.repeat(12), teleportHead: '123456789', modules: [] }
+    export async function render(context) {
+      if (context?.props?.defer) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_200)
+      if (context?.props?.oversized) return { content: '\u00e9'.repeat(12), teleportHead: '123456789', modules: [] }
       return { content: threadId + ':' + context.value, teleportHead: '', modules: [] }
     }`,
   )
@@ -86,18 +86,21 @@ test('production can replace a worker after a synchronous render overruns its de
     maxConcurrentRenders: 1,
     maxOutputBytes: 32,
   })
-  await assert.rejects(renderer.render({ oversized: true }), /output limit/)
-  const first = await renderer.render({}, { value: 'first' })
+  await assert.rejects(
+    renderer.render({ props: { oversized: true } }),
+    /output limit/,
+  )
+  const first = await renderer.render({ value: 'first' })
   assert.match(first.content, /^[1-9]\d*:first$/)
-  const pending = renderer.render({ defer: true }, { value: 'late' })
-  await assert.rejects(renderer.render({}, { value: 'excess' }), {
+  const pending = renderer.render({ props: { defer: true }, value: 'late' })
+  await assert.rejects(renderer.render({ value: 'excess' }), {
     name: 'RenderBusyError',
   })
   await assert.rejects(pending, { name: 'RenderTimeoutError' })
 
   for (let attempt = 0; attempt < 5; attempt++) {
     try {
-      const next = await renderer.render({}, { value: 'next' })
+      const next = await renderer.render({ value: 'next' })
       assert.match(next.content, /^[1-9]\d*:next$/)
       assert.notEqual(next.content.split(':')[0], first.content.split(':')[0])
       return

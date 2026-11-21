@@ -16,32 +16,34 @@ import {
 
 const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
 
-test('resolves template paths as components when they target SFC files', async (t) => {
+async function createRoot(t, files = {}) {
   await mkdir(scratch, { recursive: true })
   const root = await mkdtemp(join(scratch, 'config-contract-'))
   t.after(() => rm(root, { recursive: true, force: true }))
-  await mkdir(join(root, 'src'))
-  await writeFile(join(root, 'src/App.vue'), '<template><p>App</p></template>')
+  for (const [name, content] of Object.entries(files)) {
+    await mkdir(join(root, name, '..'), { recursive: true })
+    await writeFile(join(root, name), content)
+  }
+  return root
+}
 
-  assert.deepEqual(await resolveAppSource(root, { template: 'src/App.vue' }), {
+test('resolves a Vue file configured as main', async (t) => {
+  const root = await createRoot(t, {
+    'src/App.vue': '<template><p>App</p></template>',
+  })
+
+  assert.deepEqual(await resolveAppSource(root, { main: 'src/App.vue' }), {
     kind: 'component',
     url: '/src/App.vue',
   })
 })
 
 test('loads an imported Vue component from vueforge.config.ts', async (t) => {
-  await mkdir(scratch, { recursive: true })
-  const root = await mkdtemp(join(scratch, 'config-import-'))
-  t.after(() => rm(root, { recursive: true, force: true }))
-  await mkdir(join(root, 'src'))
-  await writeFile(
-    join(root, 'src/Home.vue'),
-    '<template><h1>Home</h1></template>',
-  )
-  await writeFile(
-    join(root, 'vueforge.config.ts'),
-    "import Home from './src/Home.vue'\nexport default { template: Home }",
-  )
+  const root = await createRoot(t, {
+    'src/Home.vue': '<template><h1>Home</h1></template>',
+    'vueforge.config.ts':
+      "import Home from './src/Home.vue'\nexport default { main: Home }",
+  })
 
   const config = await loadProjectConfig(root, {
     command: 'build',
@@ -54,31 +56,24 @@ test('loads an imported Vue component from vueforge.config.ts', async (t) => {
 })
 
 test('resolves named catalogs from paths, inline SFCs, and imported components', async (t) => {
-  await mkdir(scratch, { recursive: true })
-  const root = await mkdtemp(join(scratch, 'config-catalog-'))
-  t.after(() => rm(root, { recursive: true, force: true }))
-  await mkdir(join(root, 'src'))
-  await writeFile(
-    join(root, 'src/Home.vue'),
-    '<template><h1>Home</h1></template>',
-  )
-  await writeFile(
-    join(root, 'vueforge.config.ts'),
-    [
+  const root = await createRoot(t, {
+    'src/Home.vue': '<template><h1>Home</h1></template>',
+    'vueforge.config.ts': [
       "import Home from './src/Home.vue'",
-      'export default { templates: {',
+      'export default { main: {',
       "  path: 'src/Home.vue',",
       '  component: Home,',
       "  inline: '<template><p>Inline</p></template>',",
       '} }',
     ].join('\n'),
-  )
+  })
 
   const config = await loadProjectConfig(root, {
     command: 'build',
     mode: 'production',
   })
   const sources = await resolveAppSources(root, config)
+  assert.equal(sources.kind, 'templates')
   assert.deepEqual(sources.templates, {
     path: { kind: 'component', url: '/src/Home.vue' },
     component: { kind: 'component', url: '/src/Home.vue' },
@@ -86,14 +81,34 @@ test('resolves named catalogs from paths, inline SFCs, and imported components',
   })
 })
 
+test('resolves pattern and descriptor catalogs', async (t) => {
+  const root = await createRoot(t, {
+    'src/pages/home.page.vue': '<template><p>Home</p></template>',
+    'src/pages/invoice.page.vue': '<template><p>Invoice</p></template>',
+    'src/pages/ignored.vue': '<template><p>Ignored</p></template>',
+  })
+
+  const pattern = await resolveAppSources(root, { main: /\.page\.vue$/ })
+  assert.equal(pattern.kind, 'templates')
+  assert.deepEqual(Object.keys(pattern.templates), [
+    'pages/home.page',
+    'pages/invoice.page',
+  ])
+
+  const descriptor = await resolveAppSources(root, {
+    main: { directory: 'src/pages', pattern: /home/, extension: '.vue' },
+  })
+  assert.equal(descriptor.kind, 'templates')
+  assert.deepEqual(Object.keys(descriptor.templates), ['home.page'])
+})
+
 test('rejects template names that target object prototypes', async (t) => {
-  const root = await mkdtemp(join(scratch, 'config-catalog-name-'))
-  t.after(() => rm(root, { recursive: true, force: true }))
+  const root = await createRoot(t, {
+    'src/App.vue': '<template><p>App</p></template>',
+  })
   await assert.rejects(
     resolveAppSources(root, {
-      templates: {
-        ['__proto__']: '<template><p>Unsafe</p></template>',
-      },
+      main: { ['__proto__']: '<template><p>Unsafe</p></template>' },
     }),
     /safe identifiers/i,
   )
@@ -126,8 +141,8 @@ test('rejects unsupported source file extensions', async (t) => {
   await writeFile(join(root, 'src.txt'), 'not an app')
 
   await assert.rejects(
-    resolveAppSource(root, { template: 'src.txt' }),
-    /template must point to a \.vue/i,
+    resolveAppSource(root, { main: 'src.txt' }),
+    /main must point to a \.ts/i,
   )
 })
 
