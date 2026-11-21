@@ -14,11 +14,15 @@ The example defines these names:
 
 ```sh
 npx vueforge serve --dev
+```
 
+```sh
 curl -X POST 'http://127.0.0.1:9901/render?template=home' \
   -H 'Content-Type: application/json' \
   -d '{}'
+```
 
+```sh
 curl -X POST 'http://127.0.0.1:9901/render?template=invoice' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"number":"A-42"}}'
@@ -26,3 +30,21 @@ curl -X POST 'http://127.0.0.1:9901/render?template=invoice' \
 
 The catalog is fixed when the project is loaded. A request can select a known
 name, but it cannot load an arbitrary file or Vue source.
+
+## Unknown template
+
+Requesting a name that is not in the catalog is rejected before Vue SSR runs:
+
+```sh
+curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The server returns `400` with a JSON error that lists the configured names:
+
+```json
+{
+  "error": "Unknown template \"missing\". Choose one of: home, invoice, inline."
+}
+```
