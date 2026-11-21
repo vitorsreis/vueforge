@@ -12,8 +12,9 @@ vueforge build
 printf '%s\n' '{"props":{"title":"Hello"}}' | vueforge render
 ```
 
-`serve --dev` runs the Vite SSR module runner and HMR. `serve` uses the last
-production build. `build` writes browser and SSR artifacts. `render` reads one
+`serve --dev` runs the Vite SSR module runner and HMR. Without `--dev`, `serve`
+uses `mode` from `vueforge.config.ts` when it is set and otherwise uses the
+last production build. `build` writes browser and SSR artifacts. `render` reads one
 JSON request from standard input and writes one response to standard output.
 
 Global options are `-r, --root`, `-c, --config`, `-h, --help`, and
@@ -150,6 +151,17 @@ export default {
 
 `server.shutdownTimeoutMs` bounds graceful shutdown. The CLI overrides server
 transport, TLS, and resource-limit values for one invocation.
+
+Set `mode: 'development'` when the project should start development SSR without
+passing `serve --dev`:
+
+```ts
+export default {
+  mode: 'development',
+}
+```
+
+The `--dev` flag always takes precedence for that invocation.
 
 ## Build and limits
 
