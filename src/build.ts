@@ -1,24 +1,22 @@
 import { join } from 'node:path'
 import { build } from 'vite'
-import type { UserConfig } from 'vite'
-import {
-  clientEntry,
-  serverEntry,
-  vueViteConfig,
-  requireApp,
-} from './vite/vue-app.js'
+
+import { resolveAppSource } from './config.js'
+import type { VueForgeConfig } from './index.js'
+import { clientEntry, serverEntry, vueViteConfig } from './vite/vue-app.js'
 
 export async function buildProject(
   root: string,
   tempDir: string,
-  config: UserConfig = {},
+  project: VueForgeConfig = {},
 ) {
-  await requireApp(root)
+  const source = await resolveAppSource(root, project)
+  const config = project.vite ?? {}
 
   const clientDir = join(tempDir, 'client')
 
   await build({
-    ...vueViteConfig(root, config),
+    ...vueViteConfig(root, config, source),
     build: {
       ...config.build,
       write: true,
@@ -35,7 +33,7 @@ export async function buildProject(
   })
 
   await build({
-    ...vueViteConfig(root, config),
+    ...vueViteConfig(root, config, source),
     ssr: { ...config.ssr, noExternal: true },
     build: {
       ...config.build,

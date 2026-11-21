@@ -73,12 +73,12 @@ async function main() {
   const tempDir = resolveTempDir(root, config.tempDir)
 
   if (command === 'build') {
-    await buildProject(root, tempDir, config.vite)
+    await buildProject(root, tempDir, config)
     return
   }
 
   const listener = listenOptions(config, values.host, values.port)
-  await serveProject(root, dev, listener, tempDir, config.vite)
+  await serveProject(root, dev, listener, tempDir, config)
 }
 
 main().catch((error) => {

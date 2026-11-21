@@ -1,7 +1,7 @@
+import type { App } from 'vue'
 import type { UserConfig } from 'vite'
 
-/** Project settings read from the default export of `vueforge.config.ts`. */
-export interface VueForgeConfig {
+interface ProjectOptions {
   /** Listener hostname or IP address. Defaults to `127.0.0.1`; overridden by `serve --host`. */
   host?: string
   /** TCP port from 1 to 65535. Defaults to 9901; overridden by `serve --port`. */
@@ -10,6 +10,33 @@ export interface VueForgeConfig {
   tempDir?: string
   /** Vite options for development and both builds. VueForge supplies the Vue plugin, entrypoints and output layout. */
   vite?: UserConfig
+}
+
+type AppSource =
+  | { file?: string; template?: never; entry?: never }
+  | { file?: never; template: string; entry?: never }
+  | { file?: never; template?: never; entry: string }
+
+/** Project settings read from the default export of `vueforge.config.ts`.
+ * Choose a project-relative Vue file, an inline Vue SFC, or a project-relative app factory module.
+ * With none specified, VueForge uses `src/App.vue`.
+ */
+export type VueForgeConfig = ProjectOptions & AppSource
+
+/** An entry module's default export. Create a fresh SSR app for each call.
+ * Omitted request props arrive as an empty object.
+ */
+export type AppFactory<
+  Context = Record<string, unknown>,
+  Props = Record<string, unknown>,
+> = (context: Context | undefined, props: Props) => App | Promise<App>
+
+/** Provides type checking and editor completion for an app factory. */
+export function defineApp<
+  Context = Record<string, unknown>,
+  Props = Record<string, unknown>,
+>(factory: AppFactory<Context, Props>): AppFactory<Context, Props> {
+  return factory
 }
 
 /**

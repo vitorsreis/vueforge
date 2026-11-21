@@ -37,8 +37,8 @@ export async function productionRenderer(tempDir: string) {
   })
 
   const renderApp = renderFrom(await import(pathToFileURL(entry).href))
-  const render: Render = async (props) => {
-    const { content, teleportHead } = await renderApp(props)
+  const render: Render = async (props, context) => {
+    const { content, teleportHead } = await renderApp(props, context)
     return { content, teleportHead, assets }
   }
 

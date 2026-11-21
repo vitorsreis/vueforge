@@ -7,6 +7,50 @@ import test from 'node:test'
 
 import { developmentRenderer } from '../dist/server/development.js'
 
+test('development compiles inline Vue templates with relative imports and CSS modules', async () => {
+  const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
+  await mkdir(scratch, { recursive: true })
+  const root = await mkdtemp(join(scratch, 'inline-sfc-'))
+  try {
+    await writeFile(
+      join(root, 'Child.vue'),
+      '<template><p>Child</p></template>',
+    )
+    const renderer = await developmentRenderer(
+      root,
+      {
+        template: `<script setup>
+import Child from './Child.vue'
+defineProps(['context'])
+</script>
+<template><main :class="$style.root"><Child/>{{ context.title }}</main></template>
+<style module>.root { color: red }</style>`,
+        vite: { server: { ws: false } },
+      },
+      createServer(),
+      '127.0.0.1',
+      0,
+    )
+    try {
+      const result = await renderer.render(
+        { context: { title: 'Props' } },
+        { title: 'Request' },
+      )
+      assert.match(result.content, /<p>Child<\/p>Request<\/main>/)
+      const cssClass = /class="([^"]+)"/.exec(result.content)?.[1]
+      assert.ok(cssClass)
+      assert.match(
+        result.assets.find(({ tag }) => tag === 'style')?.content ?? '',
+        new RegExp(`\\.${cssClass}\\s*{`),
+      )
+    } finally {
+      await renderer.close()
+    }
+  } finally {
+    await rm(root, { recursive: true, force: true, maxRetries: 3 })
+  }
+})
+
 test('development collects initial CSS in browser order and includes rendered async styles', async () => {
   const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
   await mkdir(scratch, { recursive: true })
@@ -44,7 +88,7 @@ defineProps({ show: Boolean, unused: Boolean })
     const server = createServer()
     const renderer = await developmentRenderer(
       root,
-      { server: { ws: false } },
+      { vite: { server: { ws: false } } },
       server,
       '127.0.0.1',
       0,

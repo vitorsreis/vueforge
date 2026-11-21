@@ -49,6 +49,9 @@ export async function renderProject(root: string) {
   const { render } = await productionRenderer(
     resolveTempDir(root, config.tempDir),
   )
-  const response = renderResponse(await render(request.props), request)
+  const response = renderResponse(
+    await render(request.props, request.context),
+    request,
+  )
   writeResponse(JSON.stringify(response) + '\n')
 }

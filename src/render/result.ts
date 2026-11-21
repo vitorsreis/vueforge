@@ -1,6 +1,6 @@
 import type { Render } from '../server/renderer.js'
 import { headEntryHtml } from './head.js'
-import type { HeadEntry } from './head.js'
+import type { HeadEntry, HeadTag } from './head.js'
 import type { RenderRequest } from './request.js'
 
 type RenderResult = Awaited<ReturnType<Render>>
@@ -8,6 +8,14 @@ type RenderResult = Awaited<ReturnType<Render>>
 interface RenderResponse<Head> {
   head: Head
   content: string
+}
+
+function hydrationData(id: string, value: Record<string, unknown>): HeadTag {
+  return {
+    tag: 'script',
+    attrs: { type: 'application/json', id },
+    content: JSON.stringify(value).replaceAll('<', '\\u003c'),
+  }
 }
 
 export function renderResponse(
@@ -24,7 +32,7 @@ export function renderResponse(
 ): RenderResponse<string | HeadEntry[]>
 export function renderResponse(
   { teleportHead, assets, content }: RenderResult,
-  { format, hydrate, props }: RenderRequest,
+  { format, hydrate, props, context }: RenderRequest,
 ): RenderResponse<string | HeadEntry[]> {
   const entries: HeadEntry[] = []
   if (teleportHead) entries.push({ html: teleportHead })
@@ -41,11 +49,9 @@ export function renderResponse(
   }
 
   if (hydrate) {
-    entries.push({
-      tag: 'script',
-      attrs: { type: 'application/json', id: 'vueforge-props' },
-      content: JSON.stringify(props ?? {}).replaceAll('<', '\\u003c'),
-    })
+    entries.push(hydrationData('vueforge-props', props ?? {}))
+    if (context !== undefined)
+      entries.push(hydrationData('vueforge-context', context))
     entries.push(...assets.filter(({ tag }) => tag === 'script'))
   }
 

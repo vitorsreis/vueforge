@@ -29,7 +29,7 @@ async function listenPort() {
 }
 
 async function startBackend(renderer, cwd) {
-  const props = { title: 'External renderer', initialCount: 2 }
+  const context = { title: 'External renderer', initialCount: 2 }
   const backend = await createViteServer({
     root: cwd,
     configFile: false,
@@ -51,7 +51,11 @@ async function startBackend(renderer, cwd) {
               const response = await fetch(renderer + '/render', {
                 method: 'POST',
                 headers: { 'content-type': 'application/json' },
-                body: JSON.stringify({ props, hydrate: true, format: 'html' }),
+                body: JSON.stringify({
+                  context,
+                  hydrate: true,
+                  format: 'html',
+                }),
                 signal: AbortSignal.timeout(5000),
               })
               const result = await response.json()
@@ -244,6 +248,10 @@ await mkdir(scratch, { recursive: true })
 const cwd = await mkdtemp(join(scratch, 'browser-test-'))
 try {
   await cp(fixture, join(cwd, 'src'), { recursive: true })
+  await writeFile(
+    join(cwd, 'vueforge.config.ts'),
+    "export default { entry: 'src/entry.ts' }",
+  )
   const browser = await chromium.launch(
     env.BROWSER_EXECUTABLE
       ? { executablePath: env.BROWSER_EXECUTABLE }

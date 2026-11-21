@@ -1,10 +1,63 @@
 import { existsSync } from 'node:fs'
-import { join, resolve } from 'node:path'
+import { stat } from 'node:fs/promises'
+import { extname, isAbsolute, join, relative, resolve, sep } from 'node:path'
 
-import { loadConfigFromFile } from 'vite'
+import { loadConfigFromFile, normalizePath } from 'vite'
 import type { ConfigEnv } from 'vite'
 
 import type { VueForgeConfig } from './index.js'
+
+export type AppSource =
+  { kind: 'file' | 'entry'; url: string } | { kind: 'template'; code: string }
+
+export async function resolveAppSource(
+  root: string,
+  config: VueForgeConfig,
+): Promise<AppSource> {
+  const fields = (['file', 'template', 'entry'] as const).filter(
+    (field) => config[field] !== undefined,
+  )
+  if (fields.length > 1) {
+    throw new Error(
+      'vueforge.config.ts: choose only one of file, template, or entry.',
+    )
+  }
+
+  const field = fields[0]
+  const value = field === undefined ? 'src/App.vue' : config[field]
+  if (typeof value !== 'string' || !value.trim()) {
+    throw new Error(
+      `vueforge.config.ts: ${String(field)} must be a non-empty string.`,
+    )
+  }
+  if (field === 'template') return { kind: 'template', code: value }
+
+  const file = resolve(root, value)
+  const path = relative(root, file)
+  if (
+    isAbsolute(value) ||
+    isAbsolute(path) ||
+    path === '..' ||
+    path.startsWith('..' + sep) ||
+    /[?#]/.test(value)
+  ) {
+    throw new Error(
+      `vueforge.config.ts: ${String(field)} must be a file path inside the project.`,
+    )
+  }
+  if (field === 'file' && extname(file) !== '.vue') {
+    throw new Error('vueforge.config.ts: file must point to a .vue component.')
+  }
+  if (!(await stat(file).catch(() => undefined))?.isFile()) {
+    throw new Error(
+      field === undefined
+        ? 'VueForge expects src/App.vue in the current project.'
+        : `vueforge.config.ts: ${field} does not exist or is not a file: ${value}`,
+    )
+  }
+
+  return { kind: field ?? 'file', url: '/' + normalizePath(path) }
+}
 
 export async function loadProjectConfig(root: string, env: ConfigEnv) {
   const file = join(root, 'vueforge.config.ts')

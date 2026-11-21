@@ -58,7 +58,8 @@ export function renderRoute(render: Render) {
     express.json({ limit: MAX_REQUEST_BYTES }),
     async (req, res) => {
       const request = parseRenderRequest(req.body)
-      res.json(renderResponse(await render(request.props), request))
+      const result = await render(request.props, request.context)
+      res.json(renderResponse(result, request))
     },
   )
 

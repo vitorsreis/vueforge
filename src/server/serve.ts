@@ -1,8 +1,8 @@
 import { createServer as createHttpServer } from 'node:http'
 
 import express from 'express'
-import type { UserConfig } from 'vite'
 
+import type { VueForgeConfig } from '../index.js'
 import { renderResponse } from '../render/result.js'
 import { developmentRenderer } from './development.js'
 import { productionRenderer } from './production.js'
@@ -14,7 +14,7 @@ export async function serveProject(
   dev: boolean,
   { host, port }: { host: string; port: number },
   tempDir: string,
-  config: UserConfig = {},
+  config: VueForgeConfig = {},
 ) {
   const app = express()
   app.disable('x-powered-by')

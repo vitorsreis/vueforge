@@ -9,10 +9,12 @@ interface RenderedApp {
 
 type RenderEntry = (
   props?: Props,
+  context?: Record<string, unknown>,
 ) => Promise<RenderedApp & { modules: string[] }>
 
 export type Render = (
   props?: Props,
+  context?: Record<string, unknown>,
 ) => Promise<RenderedApp & { assets: HeadTag[] }>
 
 export function renderFrom(entry: unknown): RenderEntry {

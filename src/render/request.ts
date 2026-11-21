@@ -4,6 +4,7 @@ export interface RenderRequest {
   format: 'html' | 'json'
   hydrate: boolean
   props?: Record<string, unknown>
+  context?: Record<string, unknown>
 }
 
 export class RenderInputError extends Error {
@@ -21,11 +22,15 @@ export function parseRenderRequest(value: unknown): RenderRequest {
     )
   }
 
-  const { props, format = 'html', hydrate = false } = value
+  const { props, context, format = 'html', hydrate = false } = value
   if (props !== undefined && !isRecord(props)) {
     throw new RenderInputError(
       '"props" must be a JSON object, for example {"props":{"title":"Hello"}}.',
     )
+  }
+
+  if (context !== undefined && !isRecord(context)) {
+    throw new RenderInputError('"context" must be a JSON object.')
   }
 
   if (format !== 'html' && format !== 'json') {
@@ -36,5 +41,8 @@ export function parseRenderRequest(value: unknown): RenderRequest {
     throw new RenderInputError('"hydrate" must be a boolean.')
   }
 
-  return props === undefined ? { format, hydrate } : { format, hydrate, props }
+  const request: RenderRequest = { format, hydrate }
+  if (props !== undefined) request.props = props
+  if (context !== undefined) request.context = context
+  return request
 }
