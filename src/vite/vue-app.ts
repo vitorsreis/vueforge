@@ -30,7 +30,7 @@ function entries(root: string, source: AppSource): Plugin {
     source.kind === 'entry'
       ? `import * as entry from ${appImport}
 async function createApp(context, props = {}) {
-  const factory = 'createApp' in entry ? entry.createApp : entry.default
+  const factory = entry.createApp ?? entry.default
   if (typeof factory !== 'function') {
     throw new Error('The Vue entry must export a createApp function or a default app factory.')
   }
