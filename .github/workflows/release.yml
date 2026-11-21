@@ -1,23 +1,17 @@
 name: Release
 
 on:
-  workflow_run:
-    workflows: [Release request]
-    types: [completed]
+  push:
+    tags: ['v*']
 
 permissions: {}
 
 concurrency:
-  group: release-${{ github.event.workflow_run.head_sha }}
+  group: release-${{ github.sha }}
   cancel-in-progress: false
 
 jobs:
   build:
-    if: >-
-      github.ref == 'refs/heads/main' &&
-      github.event.workflow_run.conclusion == 'success' &&
-      github.event.workflow_run.event == 'push' &&
-      github.event.workflow_run.head_repository.id == github.event.repository.id
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -34,7 +28,7 @@ jobs:
       - name: Resolve release candidate
         id: candidate
         env:
-          HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          HEAD_SHA: ${{ github.sha }}
         run: |
           node --input-type=module <<'JS'
           import assert from 'node:assert/strict'
