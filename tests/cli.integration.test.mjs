@@ -45,16 +45,11 @@ function post(url, body) {
   })
 }
 
-async function checkRenderResponses(url, dev) {
+async function checkRenderResponses(url) {
   const page = await fetch(url, { signal: AbortSignal.timeout(5000) })
   assert.equal(page.status, 200)
-  const document = await page.text()
-  assert.match(document, /<h1>VueForge<\/h1>/)
-  assert.match(document, /id="vueforge-props"/)
-  if (dev) {
-    assert.equal(document.split('/@vite/client').length - 1, 1)
-    assert.match(document, /src="\/@vueforge\/client"/)
-  }
+  assert.match(page.headers.get('content-type'), /^text\/plain\b/)
+  assert.equal(await page.text(), 'Welcome to VueForge!')
 
   for (const [body, status, message] of [
     ['{', 400, /JSON object/],
@@ -104,6 +99,8 @@ for (const mode of [
     const cwd = await mkdtemp(join(scratch, 'cli-test-'))
     try {
       await cp(example, join(cwd, 'src'), { recursive: true })
+      await mkdir(join(cwd, 'public'))
+      await writeFile(join(cwd, 'public/index.html'), '<p>Project page</p>')
       const dev = mode === 'development'
       const port = await availablePort()
       const url = 'http://127.0.0.1:' + port
@@ -166,7 +163,7 @@ for (const mode of [
         assert.equal(health.headers.get('cache-control'), 'no-store')
         assert.deepEqual(await health.json(), { status: 'ok' })
 
-        await checkRenderResponses(url, dev)
+        await checkRenderResponses(url)
 
         if (dev) {
           await checkComponentReload(cwd, url)

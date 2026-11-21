@@ -89,7 +89,7 @@ For example, sending `{"props":[]}` returns HTTP 400 and:
 
 ## GET /
 
-Returns an HTML preview using the component's default props and hydration. In development the preview also loads Vite's browser client for HMR.
+Returns HTTP 200 with the plain text `Welcome to VueForge!`.
 
 ## GET /healthz
 

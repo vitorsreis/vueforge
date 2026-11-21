@@ -50,8 +50,6 @@ export async function developmentRenderer(
 
   return {
     render,
-    transformDocument: (url: string, html: string) =>
-      vite.transformIndexHtml(url, html),
     middleware: vite.middlewares,
     close: () => vite.close(),
   }

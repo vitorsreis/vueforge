@@ -31,7 +31,3 @@ export function renderFrom(entry: unknown): RenderEntry {
 
   return entry.render as RenderEntry
 }
-
-export function documentShell(head: string, content: string) {
-  return `<!doctype html><html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width, initial-scale=1">${head}</head><body><div id="app">${content}</div></body></html>`
-}

@@ -1,6 +1,6 @@
 # VueForge
 
-VueForge renders a project-configured Vue source on the server, using `src/App.vue` by default. Your backend owns routes and business logic. Send JSON props and optional context over HTTP or stdin and get the page's head and body fragments, with optional browser hydration. In development, VueForge serves a hydrated preview with Vite hot module replacement (HMR).
+VueForge renders a project-configured Vue source on the server, using `src/App.vue` by default. Your backend owns routes and business logic. Send JSON props and optional context over HTTP or stdin and get the page's head and body fragments, with optional browser hydration. In development, Vite provides hot module replacement (HMR) on hydrated backend pages.
 
 ## Try your first render
 
@@ -18,7 +18,7 @@ defineProps({ title: { type: String, default: 'VueForge' } })
 </template>
 ```
 
-From that project's root, run `npx vueforge serve --dev`. Open `http://127.0.0.1:9901/` to see the default title. In a second terminal, send a render request (POSIX shell):
+From that project's root, run `npx vueforge serve --dev`. Open `http://127.0.0.1:9901/` to see the welcome message. In a second terminal, send a render request (POSIX shell):
 
 ```sh
 curl --json '{"props":{"title":"Hello"}}' http://127.0.0.1:9901/render
