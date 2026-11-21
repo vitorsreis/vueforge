@@ -7,11 +7,15 @@ interface RenderedApp {
   teleportHead: string
 }
 
+type RenderEntry = (
+  props?: Props,
+) => Promise<RenderedApp & { modules: string[] }>
+
 export type Render = (
   props?: Props,
 ) => Promise<RenderedApp & { assets: HeadTag[] }>
 
-export function renderFrom(entry: unknown) {
+export function renderFrom(entry: unknown): RenderEntry {
   if (
     typeof entry !== 'object' ||
     entry === null ||
@@ -23,32 +27,7 @@ export function renderFrom(entry: unknown) {
     )
   }
 
-  const render = entry.render as (props?: Props) => Promise<unknown>
-  return async (props?: Props) => {
-    const result = await render(props)
-    if (
-      typeof result !== 'object' ||
-      result === null ||
-      !('content' in result) ||
-      typeof result.content !== 'string' ||
-      !('teleportHead' in result) ||
-      typeof result.teleportHead !== 'string' ||
-      !('modules' in result) ||
-      !Array.isArray(result.modules) ||
-      !result.modules.every(
-        (id: unknown): id is string => typeof id === 'string',
-      )
-    ) {
-      throw new Error(
-        'Incompatible VueForge SSR entry. Run vueforge build again.',
-      )
-    }
-    return {
-      content: result.content,
-      teleportHead: result.teleportHead,
-      modules: result.modules,
-    }
-  }
+  return entry.render as RenderEntry
 }
 
 export function documentShell(head: string, content: string) {
