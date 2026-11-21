@@ -46,6 +46,8 @@ export async function startNodeAdapter({
 }: NodeAdapterOptions) {
   const server: Server =
     existingServer ?? (await createNodeServer(root, ssl, requestHandler))
+  server.requestTimeout = 30_000
+  server.headersTimeout = 10_000
   if (existingServer?.listenerCount('request') === 0)
     existingServer.on('request', requestHandler)
   const listening = await listenHttpServer(server, transport)

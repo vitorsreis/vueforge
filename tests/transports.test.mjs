@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import { Buffer } from 'node:buffer'
 import { PassThrough } from 'node:stream'
 import { createServer } from 'node:http'
-import { lstat, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { lstat, mkdtemp, rm, stat, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
 import process from 'node:process'
 import test from 'node:test'
@@ -62,6 +62,9 @@ test('owns and cleans a Unix socket without deleting a replaced path', async (t)
 
   const listening = await listenHttpServer(server, { kind: 'unix', path })
   assert.equal((await lstat(path)).isSocket(), true)
+  if (process.platform !== 'win32') {
+    assert.equal((await stat(path)).mode & 0o777, 0o600)
+  }
   await closeHttpServer(server, listening)
   await assert.rejects(lstat(path), { code: 'ENOENT' })
 

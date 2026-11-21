@@ -29,6 +29,14 @@ test('framework-neutral render handler maps input errors', async () => {
   assert.match(response.body.error, /props.*JSON object/i)
 })
 
+test('enforces the output limit after response formatting', async () => {
+  const handle = createRenderHandler(render, { maxOutputBytes: 8 })
+  const response = await handle({ body: { props: { title: 'Large' } } })
+
+  assert.equal(response.status, 413)
+  assert.match(response.body.error, /output limit/i)
+})
+
 test('negotiates JSON by default and HTML by Accept quality', async () => {
   const handle = createRenderHandler(render)
 

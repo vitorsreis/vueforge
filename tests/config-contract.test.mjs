@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
 import { join } from 'node:path'
+import { tmpdir } from 'node:os'
 import test from 'node:test'
 import { fileURLToPath, URL } from 'node:url'
 
@@ -68,5 +69,16 @@ test('resolves build output and validates configured render limits', () => {
   assert.throws(
     () => resolveRenderLimits({ limits: { renderTimeoutMs: 0 } }),
     /positive safe integer/,
+  )
+})
+
+test('rejects unsupported source file extensions', async (t) => {
+  const root = await mkdtemp(join(tmpdir(), 'vueforge-source-extension-'))
+  t.after(() => rm(root, { recursive: true, force: true }))
+  await writeFile(join(root, 'src.txt'), 'not an app')
+
+  await assert.rejects(
+    resolveAppSource(root, { source: 'src.txt' }),
+    /source must point to a \.vue, \.ts/i,
   )
 })
