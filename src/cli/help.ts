@@ -2,13 +2,13 @@ import type { CliCommand } from './arguments.js'
 
 const globalOptions = `Options:
   -r, --root <path>     Project root (default: current directory)
-  -c, --config <path>  Configuration file (default: vueforge.config.ts)
+  -c, --config <path>    Configuration file (default: vueforge.config.ts)
   -h, --help           Show help
   -v, --version        Show version`
 
 const commandOptions = `Global options:
   -r, --root <path>     Project root
-  -c, --config <path>  Configuration file
+  -c, --config <path>    Configuration file
   -h, --help           Show help
   -v, --version        Show version`
 
@@ -38,7 +38,7 @@ Options:
   --max-concurrent-renders <count>
                        Maximum concurrent renders (positive integer)
   -r, --root <path>     Project root
-  -c, --config <path>  Configuration file
+  -c, --config <path>    Configuration file
   -h, --help           Show this help
   -v, --version        Show version
 
@@ -72,7 +72,7 @@ Options:
   --max-request-bytes <bytes>
                        Maximum request body size (positive integer)
   -r, --root <path>     Project root
-  -c, --config <path>  Configuration file
+  -c, --config <path>    Configuration file
   -h, --help           Show this help
   -v, --version        Show version
 
