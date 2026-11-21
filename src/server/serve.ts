@@ -108,6 +108,7 @@ export async function serveProject(
       nodeServer,
       transport.host,
       transport.port,
+      sources,
     )
   } else {
     renderer = {

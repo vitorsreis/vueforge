@@ -188,7 +188,14 @@ export async function createVueforgeRenderer(
           close: () => undefined,
         }
       : mode === 'development'
-        ? await developmentRenderer(root, config)
+        ? await developmentRenderer(
+            root,
+            config,
+            undefined,
+            undefined,
+            undefined,
+            sources,
+          )
         : await productionRenderer(
             resolveBuildOutputDir(root, config.build?.outDir),
             resolveAssetBase(config.origin, config.base),

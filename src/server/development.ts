@@ -4,6 +4,7 @@ import { hostValidationMiddleware } from 'host-validation-middleware'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 
 import { resolveAppSources } from '../config/source.js'
+import type { AppSources } from '../config/source.js'
 import { resolveAssetBase } from '../config.js'
 import type { VueforgeConfig } from '../index.js'
 import { developmentAssets } from '../vite/development-assets.js'
@@ -17,13 +18,14 @@ export async function developmentRenderer(
   server?: Server,
   host = '127.0.0.1',
   port = 9901,
+  sources?: AppSources,
 ) {
-  const sources = await resolveAppSources(root, project)
+  const resolvedSources = sources ?? (await resolveAppSources(root, project))
   const config = project.vite ?? {}
   const hmr = config.server?.hmr
 
   const vite = await createServer({
-    ...vueViteConfig(root, config, sources, project.document?.rootId),
+    ...vueViteConfig(root, config, resolvedSources, project.document?.rootId),
     appType: 'custom',
     server: {
       ...config.server,
