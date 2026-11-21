@@ -14,7 +14,7 @@ npx vueforge serve --dev
 ```
 
 ```sh
-curl -X POST 'http://127.0.0.1:9901/render?template=home.page' \
+curl -X POST 'http://127.0.0.1:9901/render?template=home.page&pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"title":"Home"}}'
 ```
@@ -30,7 +30,7 @@ rejected before Vue SSR runs:
 ```sh
 curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{"props":{"title":"Unknown template"}}'
 ```
 
 The server returns `400` and lists the matching template names:

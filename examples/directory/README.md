@@ -36,9 +36,9 @@ Requesting a name that was not found while scanning `src/pages` is rejected
 before Vue SSR runs:
 
 ```sh
-curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
+curl -i -X POST 'http://127.0.0.1:9901/render?template=missing&pretty=1' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{"props":{"title":"Unknown template"}}'
 ```
 
 The server returns `400` with the names discovered in the directory:

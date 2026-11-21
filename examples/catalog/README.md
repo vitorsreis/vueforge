@@ -17,13 +17,13 @@ npx vueforge serve --dev
 ```
 
 ```sh
-curl -X POST 'http://127.0.0.1:9901/render?template=home' \
+curl -X POST 'http://127.0.0.1:9901/render?template=home&pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{}'
 ```
 
 ```sh
-curl -X POST 'http://127.0.0.1:9901/render?template=invoice' \
+curl -X POST 'http://127.0.0.1:9901/render?template=invoice&pretty=1' \
   -H 'Content-Type: application/json' \
   -d '{"props":{"number":"A-42"}}'
 ```
@@ -36,9 +36,9 @@ name, but it cannot load an arbitrary file or Vue source.
 Requesting a name that is not in the catalog is rejected before Vue SSR runs:
 
 ```sh
-curl -i -X POST 'http://127.0.0.1:9901/render?template=missing' \
+curl -i -X POST 'http://127.0.0.1:9901/render?template=missing&pretty=1' \
   -H 'Content-Type: application/json' \
-  -d '{}'
+  -d '{"props":{"title":"Unknown template"}}'
 ```
 
 The server returns `400` with a JSON error that lists the configured names:
