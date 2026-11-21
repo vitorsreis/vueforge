@@ -6,14 +6,11 @@ import { renderDocument, type DocumentOptions } from './document.js'
 
 type RenderResult = Awaited<ReturnType<Render>>
 
-interface RenderResponse<Head> {
-  head: Head
-  content: string
-  state?: unknown
-}
-
 export type FormattedRenderResponse =
-  | { format: 'json'; body: RenderResponse<HeadEntry[]> }
+  | {
+      format: 'json'
+      body: { head: HeadEntry[]; content: string; state?: unknown }
+    }
   | { format: 'html'; body: string }
 
 export interface FormatRenderOptions {
@@ -47,37 +44,6 @@ function cleanContent(content: string, hydrate: boolean) {
     /<!--(?:teleport(?: start anchor| anchor| start| end)?|\[|\])-->/g,
     '',
   )
-}
-
-export function renderResponse(
-  result: RenderResult,
-  request: RenderRequest & { format: 'html' },
-): RenderResponse<string>
-export function renderResponse(
-  result: RenderResult,
-  request: RenderRequest & { format: 'json' },
-): RenderResponse<HeadEntry[]>
-export function renderResponse(
-  result: RenderResult,
-  request: RenderRequest,
-): RenderResponse<string | HeadEntry[]>
-export function renderResponse(
-  { teleportHead, assets, content, context }: RenderResult,
-  { format, ...request }: RenderRequest,
-): RenderResponse<string | HeadEntry[]> {
-  const safeContext = context ?? {}
-  const entries = renderHeadEntries(
-    { teleportHead, assets, content, context: safeContext },
-    request,
-  )
-
-  return {
-    head: format === 'html' ? entries.map(headEntryHtml).join('') : entries,
-    content: cleanContent(content, request.hydrate),
-    ...(Object.hasOwn(safeContext, 'state') && safeContext.state !== undefined
-      ? { state: safeContext.state }
-      : {}),
-  }
 }
 
 function renderHeadEntries(

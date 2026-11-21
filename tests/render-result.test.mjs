@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 
 import { RenderInputError, parseRenderRequest } from '../dist/render/request.js'
-import { formatRenderResponse, renderResponse } from '../dist/render/result.js'
+import { formatRenderResponse } from '../dist/render/result.js'
 
 test('treats the complete body as request context and controls rendering from options', () => {
   assert.deepEqual(parseRenderRequest({}), {
@@ -26,7 +26,7 @@ test('treats the complete body as request context and controls rendering from op
 })
 
 test('parses Teleport head tags and removes Vue markers without hydration', () => {
-  const result = renderResponse(
+  const result = formatRenderResponse(
     {
       teleportHead:
         '<!--teleport start anchor--><title>Orders</title><!--teleport anchor-->',
@@ -37,14 +37,14 @@ test('parses Teleport head tags and removes Vue markers without hydration', () =
     },
     { format: 'json', hydrate: false, context: {} },
   )
-  assert.deepEqual(result, {
+  assert.deepEqual(result.body, {
     head: [{ tag: 'title', attrs: {}, content: 'Orders' }],
     content: '<main>Orders</main>',
   })
 })
 
 test('emits one complete hydration payload and preserves anchors', () => {
-  const result = renderResponse(
+  const result = formatRenderResponse(
     {
       teleportHead:
         '<!--teleport start anchor--><title>Orders</title><!--teleport anchor-->',
@@ -54,17 +54,19 @@ test('emits one complete hydration payload and preserves anchors', () => {
     },
     { format: 'json', hydrate: true, context: { props: { title: 'Orders' } } },
   )
-  assert.deepEqual(result.head.slice(0, 3), [
+  assert.deepEqual(result.body.head.slice(0, 3), [
     { html: '<!--teleport start anchor-->' },
     { tag: 'title', attrs: {}, content: 'Orders' },
     { html: '<!--teleport anchor-->' },
   ])
-  const payload = result.head.find(({ attrs }) => attrs?.id === '__VUEFORGE__')
+  const payload = result.body.head.find(
+    ({ attrs }) => attrs?.id === '__VUEFORGE__',
+  )
   assert.ok(payload)
   assert.deepEqual(JSON.parse(payload.content), {
     context: { props: { title: 'Orders' }, state: { count: 1 } },
   })
-  assert.deepEqual(result.state, { count: 1 })
+  assert.deepEqual(result.body.state, { count: 1 })
 })
 
 test('formats development assets in JSON and HTML', () => {
