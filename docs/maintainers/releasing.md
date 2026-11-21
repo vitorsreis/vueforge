@@ -21,11 +21,11 @@ The npm package must be public. The workflow uses npm trusted publishing with OI
 4. Create and push an annotated, signed tag with the same version.
 
 ```sh
-npm version 0.1.0 --no-git-tag-version
+npm version 1.0.0 --no-git-tag-version
 git add package.json package-lock.json
-git commit -S -m "release: v0.1.0"
-git tag -s v0.1.0 -m "Release v0.1.0"
-git push origin main v0.1.0
+git commit -S -m "release: v1.0.0"
+git tag -s v1.0.0 -m "Release v1.0.0"
+git push origin main v1.0.0
 ```
 
 The release workflow runs the quality checks, dependency audit, package qualification, tag verification, npm publication, and GitHub Release upload.
@@ -33,7 +33,7 @@ The release workflow runs the quality checks, dependency audit, package qualific
 ## Verify
 
 ```sh
-npm view @vitorsreis/vueforge@0.1.0 version dist.integrity
+npm view @vitorsreis/vueforge@1.0.0 version dist.integrity
 ```
 
 Check that the npm version and GitHub Release use the same tag. Investigate a failed release before creating another tag for the same version.

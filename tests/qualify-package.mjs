@@ -109,6 +109,26 @@ try {
     cwd,
   )
 
+  await writeFile(
+    join(cwd, 'consumer.ts'),
+    "import { createVueforgeRenderer, type VueforgeRendererOptions } from '@vitorsreis/vueforge'\nconst options: VueforgeRendererOptions = { mode: 'production' }\nvoid createVueforgeRenderer(options)\n",
+  )
+  run(
+    join(root, 'node_modules/typescript7/bin/tsc'),
+    [
+      '--noEmit',
+      '--module',
+      'NodeNext',
+      '--moduleResolution',
+      'NodeNext',
+      '--target',
+      'ES2024',
+      '--skipLibCheck',
+      join(cwd, 'consumer.ts'),
+    ],
+    cwd,
+  )
+
   assert.match(
     run(npm, ['exec', '--offline', '--no', '--', 'vueforge', '--help'], cwd),
     /vueforge build/,

@@ -11,4 +11,4 @@ about: Report reproducible behavior
 
 ## Environment
 
-<!-- Include OS, Node.js version and VueForge version or commit. -->
+<!-- Include OS, Node.js version and Vueforge version or commit. -->

@@ -27,7 +27,7 @@ backend route
 
 The JSON response is fragment-oriented. The HTML response uses the configured `document` options for doctype, root id, attributes, and extra head entries.
 
-When a catalog is configured, include the selected name in the query:
+When `main` selects a template catalog, include the selected name in the query:
 
 ```json
 {
