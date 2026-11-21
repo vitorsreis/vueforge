@@ -131,7 +131,7 @@ async function checkComponentReload(cwd, url) {
   for (;;) {
     const response = await post(url, '{}')
     assert.equal(response.status, 200)
-    if ((await response.json()).content === '<h2>vueforge</h2>') break
+    if ((await response.json()).content === '<h2>Vueforge</h2>') break
     assert.ok(Date.now() < deadline, 'SSR did not pick up the SFC edit')
     await delay(50)
   }
