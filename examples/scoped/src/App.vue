@@ -13,12 +13,19 @@ defineProps<{
 
 <style scoped>
 .card {
-  border: 1px solid #d4d4d4;
+  border: 1px solid var(--card-border-color);
   border-radius: 0.75rem;
   padding: 1.5rem;
 }
 
 .card h1 {
-  color: #155e75;
+  color: var(--card-title-color);
+}
+</style>
+
+<style>
+:root {
+  --card-border-color: #d4d4d4;
+  --card-title-color: #1f2937;
 }
 </style>
