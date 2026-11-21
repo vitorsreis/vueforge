@@ -16,7 +16,7 @@ import { promisify } from 'node:util'
 const { AbortSignal } = globalThis
 const host = '127.0.0.1'
 const warmupRequests = 10
-const measuredRequests = 100
+const measuredRequests = 5000
 const cli = fileURLToPath(new URL('../bin/vueforge', import.meta.url))
 const example = new URL('../examples/basic/src/', import.meta.url)
 const scratch = fileURLToPath(new URL('../.vueforge', import.meta.url))
@@ -59,7 +59,7 @@ async function render(port, agent, title, deadline) {
   assert.equal(response.statusCode, 200)
   assert.match(response.headers['content-type'], /^application\/json\b/)
   assert.deepEqual(JSON.parse(payload), {
-    head: '',
+    head: [],
     content: `<h1>${title}</h1>`,
   })
   return elapsed
@@ -150,7 +150,7 @@ try {
       `POST ${origin}/render | examples/basic/src/App.vue | production | HTTP keep-alive`,
     )
     const results = []
-    for (const concurrency of [1, 2])
+    for (const concurrency of [1, 2, 4])
       results.push(await benchmark(port, concurrency))
     console.table(results)
   } finally {
