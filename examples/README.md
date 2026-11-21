@@ -11,6 +11,7 @@ and HTTP requests that can be opened in an HTTP client.
 - `pattern` scans files selected by a regular expression.
 - `descriptor` limits a catalog with `directory`, `pattern`, and `extension`.
 - `object` maps names to individual component and inline sources.
+- `handler` declares the request-scoped app factory directly in the config.
 
 Run an example from its directory:
 
