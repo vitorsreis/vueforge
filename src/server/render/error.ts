@@ -1,4 +1,4 @@
-import { readFile } from 'node:fs/promises'
+import { readFile, realpath } from 'node:fs/promises'
 import { isAbsolute, relative, resolve, sep } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
@@ -78,10 +78,15 @@ async function sourceFrame(
   if (!file || !line) return undefined
 
   const absolute = isAbsolute(file) ? file : resolve(root, file)
-  const path = relative(root, absolute)
+  const [projectRoot, source] = await Promise.all([
+    realpath(root).catch(() => undefined),
+    realpath(absolute).catch(() => undefined),
+  ])
+  if (projectRoot === undefined || source === undefined) return undefined
+  const path = relative(projectRoot, source)
   if (path === '..' || path.startsWith('..' + sep)) return undefined
 
-  const content = await readFile(absolute, 'utf8').catch(() => undefined)
+  const content = await readFile(source, 'utf8').catch(() => undefined)
   if (content === undefined) return undefined
 
   const lines = content.split(/\r?\n/)

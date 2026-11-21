@@ -21,9 +21,15 @@ export function resolveMode(
 }
 
 export function resolveAssetBase(origin: unknown, base: unknown = '/') {
-  if (typeof base !== 'string' || !base.trim() || !base.startsWith('/')) {
+  if (
+    typeof base !== 'string' ||
+    !base.trim() ||
+    !base.startsWith('/') ||
+    base.startsWith('//') ||
+    /[?#\\]/.test(base)
+  ) {
     throw new Error(
-      'vueforge.config.ts: base must be a non-empty path starting with /.',
+      'vueforge.config.ts: base must be a non-empty absolute path without a query, fragment, or backslash.',
     )
   }
   const normalizedBase = base.endsWith('/') ? base : `${base}/`

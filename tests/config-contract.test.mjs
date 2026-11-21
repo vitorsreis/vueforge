@@ -148,6 +148,10 @@ test('resolves origin and base for public browser assets', () => {
     'http://127.0.0.1:9901/admin/',
   )
   assert.throws(() => resolveAssetBase('localhost:9901', '/admin'), /origin/)
+  assert.throws(() =>
+    resolveAssetBase('https://example.com', '//attacker.test'),
+  )
+  assert.throws(() => resolveAssetBase(undefined, '/admin?next=/'))
 })
 
 test('resolves and validates runtime modes', () => {

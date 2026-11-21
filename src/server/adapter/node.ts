@@ -60,16 +60,20 @@ export async function startNodeAdapter({
       closed = true
       const closing = closeHttpServer(server, listening)
       const timeout = Symbol('shutdown-timeout')
-      const outcome = await Promise.race([
-        closing.then(() => {
-          return undefined
-        }),
-        new Promise<typeof timeout>((resolve) => {
-          setTimeout(() => {
-            resolve(timeout)
-          }, shutdownTimeoutMs)
-        }),
-      ])
+      let timer: ReturnType<typeof setTimeout> | undefined
+      let outcome: undefined | typeof timeout
+      try {
+        outcome = await Promise.race([
+          closing.then((): undefined => undefined),
+          new Promise<typeof timeout>((resolve) => {
+            timer = setTimeout(() => {
+              resolve(timeout)
+            }, shutdownTimeoutMs)
+          }),
+        ])
+      } finally {
+        if (timer !== undefined) clearTimeout(timer)
+      }
       if (server.listening) server.closeAllConnections()
       if (outcome !== timeout) await closing.catch(() => undefined)
     },

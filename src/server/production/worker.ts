@@ -1,4 +1,5 @@
 import { Buffer } from 'node:buffer'
+import { serialize } from 'node:v8'
 import { parentPort, workerData } from 'node:worker_threads'
 
 import { renderFrom, type AppRender } from '../../render/renderer.js'
@@ -45,7 +46,9 @@ async function renderAndReply(request: WorkerRequest) {
     } else {
       const { content, teleportHead, context } = await render(...request)
       if (
-        Buffer.byteLength(content) + Buffer.byteLength(teleportHead) >
+        Buffer.byteLength(content) +
+          Buffer.byteLength(teleportHead) +
+          serialize(context).byteLength >
         maxOutputBytes
       ) {
         throw new Error(

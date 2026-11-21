@@ -73,6 +73,7 @@ test('production can replace a worker after a synchronous render overruns its de
     export async function render(context) {
       if (context?.props?.defer) Atomics.wait(new Int32Array(new SharedArrayBuffer(4)), 0, 0, 1_200)
       if (context?.props?.oversized) return { content: '\u00e9'.repeat(12), teleportHead: '123456789', modules: [] }
+      if (context?.props?.largeState) return { content: 'x', teleportHead: '', context: { state: 'x'.repeat(100) }, modules: [] }
       return { content: threadId + ':' + context.value, teleportHead: '', modules: [] }
     }`,
   )
@@ -88,6 +89,10 @@ test('production can replace a worker after a synchronous render overruns its de
   })
   await assert.rejects(
     renderer.render({ props: { oversized: true } }),
+    /output limit/,
+  )
+  await assert.rejects(
+    renderer.render({ props: { largeState: true } }),
     /output limit/,
   )
   const first = await renderer.render({ value: 'first' })

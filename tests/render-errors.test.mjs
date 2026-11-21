@@ -1,14 +1,39 @@
 import assert from 'node:assert/strict'
 import { once } from 'node:events'
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
+import { mkdir, mkdtemp, rm, symlink, writeFile } from 'node:fs/promises'
 import { join, resolve } from 'node:path'
+import process from 'node:process'
 import test from 'node:test'
 
 import express from 'express'
 
 import { renderRoute } from '../dist/server/render/route.js'
+import { normalizeRenderError } from '../dist/server/render/error.js'
 
 const { fetch } = globalThis
+
+test('development diagnostics do not read source through an external symlink', async (t) => {
+  if (process.platform === 'win32')
+    return t.skip('Symlink creation requires elevated privileges on Windows.')
+
+  const root = await mkdtemp(join('.vueforge', 'render-errors-root-'))
+  const outside = await mkdtemp(join('.vueforge', 'render-errors-outside-'))
+  const target = resolve(outside, 'secret.vue')
+  const link = resolve(root, 'src/secret.vue')
+  await mkdir(join(root, 'src'))
+  await writeFile(target, '<template>private source</template>\n')
+  await symlink(target, link)
+  t.after(async () => {
+    await rm(root, { recursive: true, force: true })
+    await rm(outside, { recursive: true, force: true })
+  })
+
+  const details = await normalizeRenderError(
+    Object.assign(new Error('broken'), { id: link, loc: { line: 1 } }),
+    root,
+  )
+  assert.equal(details.source, undefined)
+})
 
 test('development render errors support HTML and JSON diagnostics', async (t) => {
   const root = await mkdtemp(join('.vueforge', 'render-errors-'))
