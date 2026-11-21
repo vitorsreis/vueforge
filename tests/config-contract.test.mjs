@@ -158,3 +158,21 @@ test('resolves and validates runtime modes', () => {
     /mode must be "development" or "production"/i,
   )
 })
+
+test('passes configured runtime mode to vite.config.ts', async (t) => {
+  const root = await createRoot(t, {
+    'vueforge.config.ts': "export default { mode: 'development' }",
+    'vite.config.ts': [
+      "import { defineConfig } from 'vite'",
+      'export default defineConfig(({ mode }) => ({',
+      '  define: { __VUEFORGE_CONFIG_MODE__: JSON.stringify(mode) },',
+      '}))',
+    ].join('\n'),
+  })
+
+  const config = await loadProjectConfig(root, {
+    command: 'serve',
+    mode: 'production',
+  })
+  assert.equal(config.vite?.define?.__VUEFORGE_CONFIG_MODE__, '"development"')
+})

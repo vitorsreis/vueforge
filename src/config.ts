@@ -126,7 +126,6 @@ export async function loadProjectConfig(
     }
   }
 
-  const viteConfig = await loadConfigFromFile(env, undefined, root)
   const config = {
     ...((projectConfig?.config ?? {}) as Record<string, unknown>),
     ...(inlineConfig ?? {}),
@@ -139,6 +138,16 @@ export async function loadProjectConfig(
   ) {
     throw new Error('vueforge.config.ts: vite must be an object.')
   }
+
+  const viteMode =
+    config.mode === 'development' || config.mode === 'production'
+      ? config.mode
+      : env.mode
+  const viteConfig = await loadConfigFromFile(
+    { ...env, mode: viteMode },
+    undefined,
+    root,
+  )
 
   if (viteConfig) {
     config.vite = mergeConfig(
