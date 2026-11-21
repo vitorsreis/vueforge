@@ -1,7 +1,0 @@
-### Simple example with JSON response
-POST http://127.0.0.1:9901/render
-Content-Type: application/json; charset=utf-8
-
-{
-  "name": "Ada"
-}

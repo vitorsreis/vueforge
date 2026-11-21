@@ -1,4 +1,0 @@
-POST http://127.0.0.1:9901/render?template=home.page
-Content-Type: application/json
-
-{"props":{"title":"Home"}}

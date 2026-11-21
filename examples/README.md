@@ -1,16 +1,17 @@
 # Examples
 
-Each directory is a small Vueforge project with a configuration, source files,
-and HTTP requests that can be opened in an HTTP client.
+Each directory is a small Vueforge project with its own configuration and
+source files. The README in each example explains the selected `main` source,
+the request context, and commands that can be copied into a terminal.
 
-- `basic` uses the default `.vue` component path.
-- `factory` uses a request-scoped entry module and `createVueforgeApp`.
-- `inline` uses an inline SFC in `main`.
-- `component` imports a Vue component in the configuration.
-- `templates` scans a directory as a named catalog.
-- `pattern` scans files selected by a regular expression.
-- `object` maps names to individual component and inline sources.
-- `handler` declares the request-scoped app factory directly in the config.
+- [`basic`](./basic/) uses the default `src/App.vue` component.
+- [`component`](./component/) imports a Vue component into `main`.
+- [`entry`](./entry/) loads an entry module and creates an app per request.
+- [`handler`](./handler/) declares the request-scoped factory directly in the config.
+- [`inline`](./inline/) compiles an inline single-file component.
+- [`directory`](./directory/) scans every `.vue` file in a directory.
+- [`pattern`](./pattern/) scans files selected by a regular expression.
+- [`catalog`](./catalog/) defines a named catalog of components and inline SFCs.
 
 Run an example from its directory:
 
