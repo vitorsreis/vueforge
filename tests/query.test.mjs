@@ -28,3 +28,8 @@ test('reads repeated query values deterministically', () => {
     'home',
   )
 })
+
+test('ignores malformed percent escapes without throwing', () => {
+  assert.equal(queryBoolean('/render?pretty=%ZZ', 'pretty'), false)
+  assert.equal(queryValue('/render?template=%ZZ', 'template'), undefined)
+})

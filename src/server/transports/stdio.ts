@@ -146,7 +146,16 @@ export async function serveStdio({
         continue
       }
 
-      await writeLine(output, await handle(body))
+      try {
+        await writeLine(output, await handle(body))
+      } catch (error) {
+        await writeLine(output, {
+          error:
+            error instanceof Error
+              ? error.message
+              : 'The request could not be processed.',
+        })
+      }
     }
   } catch (error) {
     if (!signal?.aborted) throw error

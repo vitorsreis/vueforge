@@ -131,3 +131,27 @@ test('rejects oversized stdio lines and continues with the next request', async 
   assert.equal(JSON.parse(lines[0]).error, 'Request line exceeds 16 bytes.')
   assert.deepEqual(JSON.parse(lines[1]), { ok: true })
 })
+
+test('returns serialization errors and continues with the next request', async () => {
+  const input = new PassThrough()
+  const output = new PassThrough()
+  const chunks = []
+  output.on('data', (chunk) => chunks.push(chunk))
+  let calls = 0
+
+  const running = serveStdio({
+    input,
+    output,
+    handle: async () => {
+      calls++
+      return calls === 1 ? { value: BigInt(1) } : { ok: true }
+    },
+  })
+
+  input.end('{}\n{}\n')
+  await running
+
+  const lines = Buffer.concat(chunks).toString('utf8').trim().split('\n')
+  assert.match(JSON.parse(lines[0]).error, /serialize|BigInt/i)
+  assert.deepEqual(JSON.parse(lines[1]), { ok: true })
+})
