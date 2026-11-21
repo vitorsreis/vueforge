@@ -23,9 +23,7 @@ async function readRequest(maxRequestBytes: number): Promise<unknown> {
         maxRequestBytes === 64 * 1024
           ? '64 KiB'
           : `${String(maxRequestBytes)} bytes`
-      throw new Error(
-        `Request body exceeds ${limit}. Reduce the JSON payload.`,
-      )
+      throw new Error(`Request body exceeds ${limit}. Reduce the JSON payload.`)
     }
     chunks.push(chunk)
   }
