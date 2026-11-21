@@ -2,7 +2,7 @@ import { Buffer } from 'node:buffer'
 import type { Readable, Writable } from 'node:stream'
 import { TextDecoder } from 'node:util'
 
-import { MAX_REQUEST_BYTES } from '../render/request.js'
+import { MAX_REQUEST_BYTES } from '../../render/request.js'
 
 export interface StdioOptions {
   handle: (body: unknown) => Promise<unknown>

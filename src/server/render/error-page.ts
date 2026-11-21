@@ -1,4 +1,4 @@
-import { errorLocation, type RenderErrorDetails } from './render-error.js'
+import { errorLocation, type RenderErrorDetails } from './error.js'
 
 function escapeHtml(value: string): string {
   return value

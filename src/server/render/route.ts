@@ -1,12 +1,9 @@
 import express from 'express'
 import type { ErrorRequestHandler } from 'express'
 
-import { MAX_REQUEST_BYTES } from '../render/request.js'
-import {
-  createRenderHandler,
-  type RenderHandlerOptions,
-} from './render-handler.js'
-import type { Render } from '../render/renderer.js'
+import { MAX_REQUEST_BYTES } from '../../render/request.js'
+import { createRenderHandler, type RenderHandlerOptions } from './handler.js'
+import type { Render } from '../../render/renderer.js'
 
 type RenderRouteOptions = RenderHandlerOptions
 

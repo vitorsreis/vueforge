@@ -1,10 +1,7 @@
 import { isAbsolute, resolve } from 'node:path'
 
-import type { VueForgeConfig } from '../index.js'
-import {
-  validateTransportSelection,
-  type ServerTransport,
-} from './transports.js'
+import type { VueForgeConfig } from '../../index.js'
+import { validateTransportSelection, type ServerTransport } from './http.js'
 
 export function listenOptions(
   config: VueForgeConfig,

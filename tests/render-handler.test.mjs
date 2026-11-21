@@ -2,7 +2,7 @@ import assert from 'node:assert/strict'
 import process from 'node:process'
 import test from 'node:test'
 
-import { createRenderHandler } from '../dist/server/render-handler.js'
+import { createRenderHandler } from '../dist/server/render/handler.js'
 
 const render = async (props) => ({
   content: `<h1>${props?.title ?? 'Default'}</h1>`,

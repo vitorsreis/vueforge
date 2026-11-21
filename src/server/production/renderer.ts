@@ -5,9 +5,13 @@ import { pathToFileURL } from 'node:url'
 import type { RequestHandler } from 'express'
 import type { Manifest } from 'vite'
 
-import { clientAssetsFile, isClientAsset } from '../client-assets.js'
-import type { HeadTag } from '../render/head.js'
-import { renderFrom, type AppRender, type Render } from '../render/renderer.js'
+import { clientAssetsFile, isClientAsset } from '../../build/assets.js'
+import type { HeadTag } from '../../render/head.js'
+import {
+  renderFrom,
+  type AppRender,
+  type Render,
+} from '../../render/renderer.js'
 
 function clientMiddleware(
   clientDir: string,

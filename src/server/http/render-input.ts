@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { TextDecoder } from 'node:util'
 
-import { MAX_REQUEST_BYTES } from '../render/request.js'
+import { MAX_REQUEST_BYTES } from '../../render/request.js'
 
 export class HttpRenderInputError extends Error {
   override name = 'HttpRenderInputError'

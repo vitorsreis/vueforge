@@ -3,7 +3,7 @@ import console from 'node:console'
 import process from 'node:process'
 
 import { loadProjectConfig, resolveTempDir } from '../dist/config.js'
-import { listenOptions } from '../dist/server/transport-config.js'
+import { listenOptions } from '../dist/server/transports/config.js'
 import { buildProject } from '../dist/build.js'
 import { CliUsageError, parseCliArguments } from '../dist/cli/arguments.js'
 import { cliHelp } from '../dist/cli/help.js'

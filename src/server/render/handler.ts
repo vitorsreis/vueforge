@@ -6,17 +6,17 @@ import {
   RenderTimeoutError,
   RenderOutputLimitError,
   type RenderLimits,
-} from './render-capacity.js'
-import type { Render } from '../render/renderer.js'
-import { normalizeRenderError } from './render-error.js'
-import { renderErrorPage } from './render-error-page.js'
-import { RenderInputError, parseRenderRequest } from '../render/request.js'
+} from './capacity.js'
+import type { Render } from '../../render/renderer.js'
+import { normalizeRenderError } from './error.js'
+import { renderErrorPage } from './error-page.js'
+import { RenderInputError, parseRenderRequest } from '../../render/request.js'
 import {
   formatRenderResponse,
   formattedResponseBytes,
-} from '../render/result.js'
-import type { RenderOutputFormat } from '../render/request.js'
-import type { DocumentOptions } from '../render/document.js'
+} from '../../render/result.js'
+import type { RenderOutputFormat } from '../../render/request.js'
+import type { DocumentOptions } from '../../render/document.js'
 import Negotiator from 'negotiator'
 
 export interface RenderHandlerRequest {

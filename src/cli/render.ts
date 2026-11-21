@@ -12,7 +12,7 @@ import {
   formatRenderResponse,
   formattedResponseBytes,
 } from '../render/result.js'
-import { productionRenderer } from '../server/production.js'
+import { productionRenderer } from '../server/production/renderer.js'
 
 async function readRequest(maxRequestBytes: number): Promise<unknown> {
   if (process.stdin.isTTY) return {}

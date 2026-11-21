@@ -8,7 +8,7 @@ import { fileURLToPath, URL } from 'node:url'
 import express from 'express'
 
 import { buildProject } from '../dist/build.js'
-import { productionRenderer } from '../dist/server/production.js'
+import { productionRenderer } from '../dist/server/production/renderer.js'
 
 const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
 

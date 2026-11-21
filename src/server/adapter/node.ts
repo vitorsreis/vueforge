@@ -3,8 +3,8 @@ import { createServer as createSecureServer } from 'node:https'
 import { readFile } from 'node:fs/promises'
 import { isAbsolute, resolve } from 'node:path'
 
-import type { HttpTransport } from '../transports.js'
-import { closeHttpServer, listenHttpServer } from '../transports.js'
+import type { HttpTransport } from '../transports/http.js'
+import { closeHttpServer, listenHttpServer } from '../transports/http.js'
 
 export interface NodeAdapterOptions {
   transport: HttpTransport

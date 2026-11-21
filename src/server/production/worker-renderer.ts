@@ -1,6 +1,6 @@
 import { Worker } from 'node:worker_threads'
 
-import type { WorkerReply, WorkerRequest } from './production-worker.js'
+import type { WorkerReply, WorkerRequest } from './worker.js'
 import {
   MAX_CONCURRENT_RENDERS,
   MAX_RENDER_BYTES,
@@ -8,8 +8,8 @@ import {
   RenderBusyError,
   RenderTimeoutError,
   type RenderLimits,
-} from './render-capacity.js'
-import type { AppRender } from '../render/renderer.js'
+} from '../render/capacity.js'
+import type { AppRender } from '../../render/renderer.js'
 
 interface Slot {
   worker: Worker
@@ -39,16 +39,13 @@ export async function productionWorkerRenderer(
   let closed = false
 
   function start() {
-    const worker = new Worker(
-      new URL('./production-worker.js', import.meta.url),
-      {
-        workerData: { entry: entry.href, maxOutputBytes },
-        resourceLimits: {
-          maxOldGenerationSizeMb: 128,
-          maxYoungGenerationSizeMb: 16,
-        },
+    const worker = new Worker(new URL('./worker.js', import.meta.url), {
+      workerData: { entry: entry.href, maxOutputBytes },
+      resourceLimits: {
+        maxOldGenerationSizeMb: 128,
+        maxYoungGenerationSizeMb: 16,
       },
-    )
+    })
     const slot: Slot = { worker, busy: false }
     slots.add(slot)
     worker.once('exit', () => slots.delete(slot))

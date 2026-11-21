@@ -11,7 +11,7 @@ import {
 import { join } from 'node:path'
 import { build } from 'vite'
 
-import { clientAssetsFile, isClientAsset } from './client-assets.js'
+import { clientAssetsFile, isClientAsset } from './build/assets.js'
 import { resolveBuildOutputDir } from './config.js'
 import { resolveAppSource } from './config/source.js'
 import type { VueForgeConfig } from './index.js'

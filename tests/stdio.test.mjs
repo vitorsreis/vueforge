@@ -10,8 +10,8 @@ import { fileURLToPath, URL } from 'node:url'
 
 import express from 'express'
 
-import { productionRenderer } from '../dist/server/production.js'
-import { renderRoute } from '../dist/server/render-route.js'
+import { productionRenderer } from '../dist/server/production/renderer.js'
+import { renderRoute } from '../dist/server/render/route.js'
 
 const { fetch, AbortSignal } = globalThis
 const cli = fileURLToPath(new URL('../bin/vueforge', import.meta.url))

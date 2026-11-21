@@ -12,8 +12,8 @@ import {
   listenHttpServer,
   UnixSocketExistsError,
   validateTransportSelection,
-} from '../dist/server/transports.js'
-import { serveStdio } from '../dist/server/stdio.js'
+} from '../dist/server/transports/http.js'
+import { serveStdio } from '../dist/server/transports/stdio.js'
 
 test('validates mutually exclusive server transports', () => {
   assert.throws(

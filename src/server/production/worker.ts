@@ -1,7 +1,7 @@
 import { Buffer } from 'node:buffer'
 import { parentPort, workerData } from 'node:worker_threads'
 
-import { renderFrom, type AppRender } from '../render/renderer.js'
+import { renderFrom, type AppRender } from '../../render/renderer.js'
 
 export type WorkerRequest = Parameters<AppRender> | undefined
 export type WorkerReply =

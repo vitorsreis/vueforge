@@ -9,7 +9,7 @@ import { pathToFileURL } from 'node:url'
 
 import express from 'express'
 
-import { renderRoute } from '../dist/server/render-route.js'
+import { renderRoute } from '../dist/server/render/route.js'
 
 const { AbortSignal, fetch } = globalThis
 
@@ -64,7 +64,7 @@ test('a timed-out development render holds its slot until it settles', async (t)
 
 test('production can replace a worker after a synchronous render overruns its deadline', async (t) => {
   const { productionWorkerRenderer } =
-    await import('../dist/server/production-worker-renderer.js')
+    await import('../dist/server/production/worker-renderer.js')
   const root = await mkdtemp(join(tmpdir(), 'vueforge-worker-test-'))
   const entry = join(root, 'entry.mjs')
   await writeFile(

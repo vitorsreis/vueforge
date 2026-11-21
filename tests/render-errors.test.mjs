@@ -6,7 +6,7 @@ import test from 'node:test'
 
 import express from 'express'
 
-import { renderRoute } from '../dist/server/render-route.js'
+import { renderRoute } from '../dist/server/render/route.js'
 
 const { fetch } = globalThis
 
