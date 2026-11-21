@@ -1,5 +1,6 @@
 import type { Server } from 'node:http'
 
+import { hostValidationMiddleware } from 'host-validation-middleware'
 import { createServer, isRunnableDevEnvironment } from 'vite'
 
 import { resolveAppSource } from '../config.js'
@@ -48,8 +49,13 @@ export async function developmentRenderer(
     }
   }
 
+  const { allowedHosts } = vite.config.server
   return {
     render,
+    hostGuard:
+      allowedHosts === true
+        ? undefined
+        : hostValidationMiddleware({ allowedHosts }),
     middleware: vite.middlewares,
     close: () => vite.close(),
   }

@@ -90,9 +90,9 @@ async function serve(cwd, verify) {
 const template = [
   '<script setup>',
   "import LocalChild from './LocalChild.vue'",
-  'defineProps({ title: String, context: Object })',
+  'defineProps({ displayTitle: String, context: Object })',
   '</script>',
-  '<template><main class="inline"><LocalChild/>{{ title }} {{ context?.label }}</main></template>',
+  '<template><main class="inline"><LocalChild/>{{ displayTitle }} {{ context?.label }}</main></template>',
   '<style scoped>.inline { color: teal }</style>',
 ].join('\n')
 
@@ -100,7 +100,7 @@ const entry = [
   "import { createSSRApp, h } from 'vue'",
   'export default async (context, props) => {',
   '  await new Promise((resolve) => setTimeout(resolve, context?.delay ?? 0))',
-  "  return createSSRApp({ render: () => h('h1', (props?.title ?? 'Untitled') + ' ' + (context?.label ?? 'anonymous')) })",
+  "  return createSSRApp({ render: () => h('h1', (props?.['display-title'] ?? 'Untitled') + ' ' + (context?.label ?? 'anonymous')) })",
   '}',
 ].join('\n')
 
@@ -110,11 +110,17 @@ for (const { name, config, files, content } of [
     config: { file: './src/Chosen.vue' },
     files: {
       'src/Chosen.vue': [
-        '<script setup>defineProps({ title: String, context: Object })</script>',
-        '<template><h1>{{ title }} {{ context?.label }}</h1></template>',
+        '<script>',
+        'export default {',
+        "  props: ['context'],",
+        '  extends: { props: { displayTitle: String } },',
+        "  mixins: [{ props: { greeting: String, suffix: { default: '!' } } }],",
+        '}',
+        '</script>',
+        '<template><h1>{{ greeting }} {{ displayTitle }} {{ context?.label }}{{ suffix }}</h1></template>',
       ].join('\n'),
     },
-    content: /^<h1>Hello Ada<\/h1>$/,
+    content: /^<h1>Welcome Hello Ada!<\/h1>$/,
   },
   {
     name: 'template',
@@ -151,7 +157,12 @@ for (const { name, config, files, content } of [
     async (t) => {
       const cwd = await project(t, config, files)
       const request = {
-        props: { title: 'Hello', context: { label: 'Shadowed' } },
+        props: {
+          'display-title': 'Hello',
+          greeting: 'Welcome',
+          'data-request-note': 'External',
+          context: { label: 'Shadowed' },
+        },
         context: { label: 'Ada' },
         format: 'json',
       }

@@ -7,8 +7,16 @@ const count = ref(props.initialCount)
 </script>
 
 <template>
-  <PageTitle :title="`${title} ${count}`" />
-  <button @click="count++">{{ title }} {{ count }}</button>
+  <main>
+    <PageTitle :title="`${title} ${count}`" />
+    <button @click="count++">{{ title }} {{ count }}</button>
+    <span
+      v-if="count > initialCount && $attrs['data-request-note']"
+      data-request-note
+    >
+      {{ $attrs['data-request-note'] }}
+    </span>
+  </main>
 </template>
 
 <style scoped>

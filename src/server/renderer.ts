@@ -7,14 +7,17 @@ interface RenderedApp {
   teleportHead: string
 }
 
-type RenderEntry = (
+export type AppRender = (
   props?: Props,
   context?: Record<string, unknown>,
+) => Promise<RenderedApp>
+
+type RenderEntry = (
+  ...args: Parameters<AppRender>
 ) => Promise<RenderedApp & { modules: string[] }>
 
 export type Render = (
-  props?: Props,
-  context?: Record<string, unknown>,
+  ...args: Parameters<AppRender>
 ) => Promise<RenderedApp & { assets: HeadTag[] }>
 
 export function renderFrom(entry: unknown): RenderEntry {

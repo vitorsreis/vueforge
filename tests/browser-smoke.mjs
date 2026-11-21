@@ -53,6 +53,11 @@ async function startBackend(renderer, cwd) {
                 headers: { 'content-type': 'application/json' },
                 body: JSON.stringify({
                   context,
+                  props: {
+                    title: context.title,
+                    'initial-count': context.initialCount,
+                    'data-request-note': 'External',
+                  },
                   hydrate: true,
                   format: 'html',
                 }),
@@ -96,6 +101,7 @@ function inspectPage() {
     title: document.title,
     titleCount: document.querySelectorAll('head title').length,
     buttonText: button?.textContent,
+    requestNoteCount: document.querySelectorAll('[data-request-note]').length,
     color: button && globalThis.getComputedStyle(button).color,
     styles: Array.from(
       document.querySelectorAll('style[data-vite-dev-id]'),
@@ -108,7 +114,7 @@ function inspectPage() {
   }
 }
 
-async function checkBrowser(browser, cwd, dev) {
+async function checkBrowser(browser, cwd, dev, source) {
   const mode = dev ? 'development' : 'production'
   if (!dev) await run(execPath, [cli, 'build'], { cwd, timeout: 30000 })
 
@@ -151,6 +157,7 @@ async function checkBrowser(browser, cwd, dev) {
     assert.equal(staticState.title, 'External renderer 2')
     assert.equal(staticState.titleCount, 1)
     assert.equal(staticState.buttonText, 'External renderer 2')
+    assert.equal(staticState.requestNoteCount, 0)
     assert.equal(staticState.color, 'rgb(20, 60, 100)')
 
     page = await browser.newPage()
@@ -181,6 +188,7 @@ async function checkBrowser(browser, cwd, dev) {
     const hydrated = await page.evaluate(inspectPage)
     assert.equal(hydrated.titleCount, 1)
     assert.equal(hydrated.buttonText, 'External renderer 3')
+    assert.equal(hydrated.requestNoteCount, 0)
     assert.equal(hydrated.color, staticState.color)
     assert.equal(await page.locator('head meta[charset="utf-8"]').count(), 1)
     assert.equal(
@@ -230,9 +238,11 @@ async function checkBrowser(browser, cwd, dev) {
     }
 
     assert.deepEqual(errors, [])
-    console.log(`Browser smoke passed in ${mode}`)
+    console.log(`Browser smoke passed in ${mode} for ${source}`)
   } catch (error) {
-    throw new Error(`Browser smoke failed in ${mode}\n${log}`, { cause: error })
+    throw new Error(`Browser smoke failed in ${mode} for ${source}\n${log}`, {
+      cause: error,
+    })
   } finally {
     try {
       await Promise.all([page?.close(), staticPage?.close()])
@@ -247,20 +257,25 @@ async function checkBrowser(browser, cwd, dev) {
 await mkdir(scratch, { recursive: true })
 const cwd = await mkdtemp(join(scratch, 'browser-test-'))
 try {
-  await cp(fixture, join(cwd, 'src'), { recursive: true })
-  await writeFile(
-    join(cwd, 'vueforge.config.ts'),
-    "export default { entry: 'src/entry.ts' }",
-  )
   const browser = await chromium.launch(
     env.BROWSER_EXECUTABLE
       ? { executablePath: env.BROWSER_EXECUTABLE }
       : { channel: 'chrome' },
   )
   try {
-    // Production runs before the development check edits the fixture's styles.
-    await checkBrowser(browser, cwd, false)
-    await checkBrowser(browser, cwd, true)
+    for (const [source, path] of [
+      ['entry', 'src/entry.ts'],
+      ['file', 'src/App.vue'],
+    ]) {
+      await cp(fixture, join(cwd, 'src'), { recursive: true })
+      await writeFile(
+        join(cwd, 'vueforge.config.ts'),
+        `export default { ${source}: ${JSON.stringify(path)} }`,
+      )
+      // Production runs before the development check edits the fixture's styles.
+      await checkBrowser(browser, cwd, false, source)
+      await checkBrowser(browser, cwd, true, source)
+    }
   } finally {
     await browser.close()
   }

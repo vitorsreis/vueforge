@@ -1,6 +1,7 @@
 import assert from 'node:assert/strict'
 import { execFile, spawn } from 'node:child_process'
 import { once } from 'node:events'
+import { request } from 'node:http'
 import {
   access,
   cp,
@@ -24,6 +25,12 @@ const cli = fileURLToPath(new URL('../bin/vueforge', import.meta.url))
 const example = new URL('../examples/basic/src/', import.meta.url)
 const scratch = fileURLToPath(new URL('../.vueforge/', import.meta.url))
 const run = promisify(execFile)
+const packageVersion = JSON.parse(
+  await readFile(
+    fileURLToPath(new URL('../package.json', import.meta.url)),
+    'utf8',
+  ),
+).version
 
 async function availablePort() {
   const socket = createServer()
@@ -45,14 +52,35 @@ function post(url, body) {
   })
 }
 
+function renderStatusForHost(url, host) {
+  return new Promise((resolve, reject) => {
+    const req = request(
+      url + '/render',
+      {
+        method: 'POST',
+        headers: { host, 'content-type': 'application/json' },
+        signal: AbortSignal.timeout(5000),
+      },
+      (res) => {
+        res.resume()
+        res.on('end', () => resolve(res.statusCode))
+        res.on('error', reject)
+      },
+    )
+    req.on('error', reject)
+    req.end('{}')
+  })
+}
+
 async function checkRenderResponses(url) {
   const page = await fetch(url, { signal: AbortSignal.timeout(5000) })
   assert.equal(page.status, 200)
   assert.match(page.headers.get('content-type'), /^application\/json\b/)
   assert.deepEqual(await page.json(), {
     message: 'Welcome to VueForge!',
-    repository: 'https://github.com/vitorsreis/vueforge',
     poweredBy: 'Vitor Reis',
+    repo: 'https://github.com/vitorsreis/vueforge',
+    version: packageVersion,
   })
 
   for (const [body, status, message] of [
@@ -111,7 +139,11 @@ for (const mode of [
 
       // An invalid bind address makes ignoring the development CLI override observable.
       const config = dev
-        ? { host: 'invalid.invalid', port: 1 }
+        ? {
+            host: 'invalid.invalid',
+            port: 1,
+            vite: { server: { allowedHosts: ['preview.example.test'] } },
+          }
         : { host: '127.0.0.1', port }
       if (mode === 'production with custom tempDir') {
         config.tempDir = 'cache/render output'
@@ -170,6 +202,14 @@ for (const mode of [
         await checkRenderResponses(url)
 
         if (dev) {
+          assert.equal(
+            await renderStatusForHost(url, 'preview.example.test'),
+            200,
+          )
+          assert.equal(
+            await renderStatusForHost(url, 'unlisted.example.test'),
+            403,
+          )
           await checkComponentReload(cwd, url)
         }
       } finally {

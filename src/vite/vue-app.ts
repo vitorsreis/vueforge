@@ -41,10 +41,38 @@ async function createApp(context, props = {}) {
   }
   return app
 }`
-      : `import { createSSRApp } from 'vue'
+      : `import { camelize, createSSRApp } from 'vue'
 import App from ${appImport}
-const createApp = (context, props) =>
-  createSSRApp(App, context === undefined ? props : { ...props, context })`
+
+// Match the names Vue reserves for VNodes instead of component props.
+const reservedProps = new Set([
+  '', 'key', 'ref', 'ref_for', 'ref_key', 'onVnodeBeforeMount', 'onVnodeMounted',
+  'onVnodeBeforeUpdate', 'onVnodeUpdated', 'onVnodeBeforeUnmount', 'onVnodeUnmounted',
+])
+const optionsAPI = typeof __VUE_OPTIONS_API__ === 'undefined' || __VUE_OPTIONS_API__
+
+function declaredProps(component, names = new Set()) {
+  if (Array.isArray(component.props)) {
+    for (const name of component.props) names.add(camelize(name))
+  } else {
+    for (const name in component.props) names.add(camelize(name))
+  }
+  if (optionsAPI && typeof component !== 'function') {
+    if (component.extends) declaredProps(component.extends, names)
+    for (const mixin of component.mixins ?? []) declaredProps(mixin, names)
+  }
+  return names
+}
+
+function createApp(context, props = {}) {
+  const declared = declaredProps(App)
+  const input = context === undefined ? props : { ...props, context }
+  const rootProps = Object.fromEntries(Object.entries(input).filter(([key]) => {
+    const name = camelize(key)
+    return declared.has(name) && !reservedProps.has(name) && !name.startsWith('$') && name !== '__proto__'
+  }))
+  return createSSRApp(App, rootProps)
+}`
 
   return {
     name: 'vueforge-entries',
