@@ -1,23 +1,79 @@
-import { access, readFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { access, lstat, readFile, realpath } from 'node:fs/promises'
+import { join, relative } from 'node:path'
 import { pathToFileURL } from 'node:url'
 
-import express from 'express'
+import type { RequestHandler } from 'express'
 import type { Manifest } from 'vite'
 
+import { clientAssetsFile, isClientAsset } from '../client-assets.js'
 import type { HeadTag } from '../render/head.js'
-import { renderFrom, type Render } from './renderer.js'
+import { renderFrom, type AppRender, type Render } from './renderer.js'
 
-export async function productionRenderer(tempDir: string) {
+function clientMiddleware(
+  clientDir: string,
+  files: Set<string>,
+): RequestHandler {
+  return async (req, res, next) => {
+    if (req.method !== 'GET' && req.method !== 'HEAD') return next()
+    let requested: string
+    try {
+      requested = decodeURIComponent(req.path)
+    } catch {
+      return next()
+    }
+    if (!requested.startsWith('/')) return next()
+    let file = requested.slice(1)
+    let redirectToDirectory = false
+    if (!files.has(file)) {
+      redirectToDirectory = !requested.endsWith('/')
+      file += (redirectToDirectory ? '/' : '') + 'index.html'
+      if (!files.has(file)) return next()
+    }
+
+    const path = join(clientDir, file)
+    const actual = await realpath(path).catch(() => undefined)
+    if (!actual || relative(path, actual) !== '') return next()
+    if (!(await lstat(path).catch(() => undefined))?.isFile()) return next()
+    if (redirectToDirectory) {
+      const queryStart = req.url.indexOf('?')
+      const query = queryStart === -1 ? '' : req.url.slice(queryStart)
+      const directory = requested.split('/').map(encodeURIComponent).join('/')
+      return res.redirect(301, directory + '/' + query)
+    }
+    return res.sendFile(actual)
+  }
+}
+
+export async function productionRenderer(
+  tempDir: string,
+  load: (
+    entry: URL,
+  ) => Promise<{ render: AppRender; close?: () => Promise<void> }> = async (
+    entry,
+  ) => ({
+    render: renderFrom(await import(entry.href)),
+  }),
+) {
   const clientDir = join(tempDir, 'client')
   const entry = join(tempDir, 'server/entry.mjs')
   const manifestFile = join(clientDir, '.vite/manifest.json')
 
-  await Promise.all([access(entry), access(manifestFile)]).catch(() => {
+  const [manifestText, inventoryText, clientPath] = await Promise.all([
+    readFile(manifestFile, 'utf8'),
+    readFile(join(clientDir, clientAssetsFile), 'utf8'),
+    realpath(clientDir),
+    access(entry),
+  ]).catch(() => {
     throw new Error('Build artifacts are missing. Run vueforge build first.')
   })
+  const inventory: unknown = JSON.parse(inventoryText)
+  if (!Array.isArray(inventory) || !inventory.every(isClientAsset)) {
+    throw new Error(
+      'Client asset inventory is invalid. Run vueforge build again.',
+    )
+  }
 
-  const manifest = JSON.parse(await readFile(manifestFile, 'utf8')) as Manifest
+  const manifest = JSON.parse(manifestText) as Manifest
   const chunks = Object.values(manifest)
   const client = chunks.find((chunk) => chunk.isEntry)
 
@@ -36,7 +92,7 @@ export async function productionRenderer(tempDir: string) {
     attrs: { type: 'module', src: '/' + client.file },
   })
 
-  const renderApp = renderFrom(await import(pathToFileURL(entry).href))
+  const { render: renderApp, close } = await load(pathToFileURL(entry))
   const render: Render = async (props, context) => {
     const { content, teleportHead } = await renderApp(props, context)
     return { content, teleportHead, assets }
@@ -44,7 +100,7 @@ export async function productionRenderer(tempDir: string) {
 
   return {
     render,
-    middleware: express.static(clientDir),
-    close: undefined,
+    middleware: clientMiddleware(clientPath, new Set(inventory)),
+    close,
   }
 }

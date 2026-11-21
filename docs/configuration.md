@@ -23,7 +23,7 @@ On success, stdout contains one JSON response followed by a newline. Diagnostics
 Place the optional `vueforge.config.ts` beside the project's `src/` directory. The public package exports the `defineConfig` helper and the TypeScript type `VueForgeConfig`. The helper returns the supplied object and provides editor completion. Defaults are applied by the CLI.
 
 ```ts
-import { defineConfig } from 'vueforge'
+import { defineConfig } from '@vitorsreis/vueforge'
 
 export default defineConfig({
   host: '127.0.0.1',
@@ -48,7 +48,7 @@ export default defineConfig({
 By default VueForge uses `src/App.vue`. To select a source, set exactly one of `file`, `template` or `entry` in `vueforge.config.ts`:
 
 ```ts
-import { defineConfig } from 'vueforge'
+import { defineConfig } from '@vitorsreis/vueforge'
 
 export default defineConfig({
   file: 'src/pages/Home.vue',
