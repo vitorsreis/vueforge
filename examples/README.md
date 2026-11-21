@@ -13,6 +13,7 @@ the request context, and commands that can be copied into a terminal.
 - [`pattern`](./pattern/) scans files selected by a regular expression.
 - [`catalog`](./catalog/) defines a named catalog of components and inline SFCs.
 - [`errors`](./errors/) demonstrates development render diagnostics.
+- [`state`](./state/) reads and updates request-scoped render state.
 - [`teleport`](./teleport/) sends title and metadata to the rendered head.
 - [`scoped`](./scoped/) demonstrates Vue `<style scoped>` output.
 
