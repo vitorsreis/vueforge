@@ -112,6 +112,60 @@ normalized `details` object with the file, line, column, source frame, plugin,
 and stack. Request `?error=html` or `Accept: text/html` for the development
 diagnostic page. Production responses keep component details in the server log.
 
+### Development diagnostics
+
+To reproduce a component error, temporarily add a failing expression to the
+configured Vue source:
+
+```vue
+<script setup>
+throw new Error('Example render failure')
+</script>
+```
+
+Request JSON diagnostics when the backend wants to display or log the error:
+
+```sh
+curl --request POST \
+  --header 'Content-Type: application/json' \
+  --data '{}' \
+  'http://127.0.0.1:9901/render?error=json'
+```
+
+Development responses have status `500` and include normalized source details:
+
+```json
+{
+  "error": "Example render failure",
+  "details": {
+    "name": "Error",
+    "message": "Example render failure",
+    "file": "src/App.vue",
+    "line": 2,
+    "column": 7,
+    "plugin": "vite:vue",
+    "frame": "...source frame from Vite...",
+    "source": "...nearby source lines...",
+    "stack": "Error: Example render failure\\n    at ..."
+  }
+}
+```
+
+Request the browser-oriented diagnostic page when the backend wants to return
+the complete error document:
+
+```sh
+curl --request POST \
+  --header 'Accept: text/html' \
+  --header 'Content-Type: application/json' \
+  --data '{}' \
+  'http://127.0.0.1:9901/render?error=html'
+```
+
+The HTML response is a complete document titled `Vueforge SSR error`. It shows
+the message, file location, Vite frame, source excerpt, and stack trace. The
+development client uses the same diagnostic fields in its HMR error overlay.
+
 | Status | Meaning                                                  |
 | ------ | -------------------------------------------------------- |
 | `400`  | Invalid JSON or request fields.                          |

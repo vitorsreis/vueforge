@@ -52,3 +52,28 @@ npx vueforge serve
 
 Production mode reads the generated artifacts and does not run the Vite
 development middleware.
+
+## Development error response
+
+To inspect the development diagnostic response, temporarily add a failing
+expression to `src/App.vue`:
+
+```vue
+<script setup>
+throw new Error('Example render failure')
+</script>
+```
+
+Request the normalized error as JSON:
+
+```sh
+curl -X POST 'http://127.0.0.1:9901/render?error=json' \
+  -H 'Content-Type: application/json' \
+  -d '{}'
+```
+
+The response has status `500` and includes `error` plus `details` with the
+message, file, line, source excerpt, and stack trace. Use
+`?error=html` or `Accept: text/html` to receive the complete Vueforge error
+document instead. Restore `src/App.vue` before continuing with the successful
+requests above.
