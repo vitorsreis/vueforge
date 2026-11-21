@@ -16,6 +16,7 @@ the request context, and commands that can be copied into a terminal.
 - [`state`](./state/) reads and updates request-scoped render state.
 - [`teleport`](./teleport/) sends title and metadata to the rendered head.
 - [`scoped`](./scoped/) demonstrates Vue `<style scoped>` output.
+- [`renderer`](./renderer/) adapts `createVueforgeRenderer` to a custom Node HTTP server.
 
 Run an example from its directory:
 
