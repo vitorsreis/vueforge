@@ -72,9 +72,9 @@ Deploy `<build.outDir>/client` and `<build.outDir>/server` from the same build. 
 
 ## Request data and app factories
 
-For a configured component or inline template, declare the props that the root component accepts. The request `context` is available through a declared `context` prop.
+For a configured component or inline SFC, declare the props that the root component accepts. The request `context` is available through a declared `context` prop.
 
-For a configured `entry`, VueForge calls `createApp(context, props)` for every render. Use the factory to create request-scoped router and store instances and to select the data that enters the app.
+For a configured factory module path in `source`, VueForge calls `createApp(context, props)` for every render. Use the factory to create request-scoped router and store instances and to select the data that enters the app.
 
 ```ts
 import { createSSRApp } from 'vue'

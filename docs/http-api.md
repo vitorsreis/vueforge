@@ -8,12 +8,12 @@ The backend owns application routes and the final HTML document. VueForge return
 
 Send one JSON object with `Content-Type: application/json`. The request body is limited to 64 KiB. Every field is optional.
 
-| Field     | Type                 | Default | Description                                                                                      |
-| --------- | -------------------- | ------- | ------------------------------------------------------------------------------------------------ |
-| `props`   | object               | `{}`    | Props for the configured Vue source.                                                             |
-| `context` | object               | omitted | Per-request data for an `entry` factory or the root `context` prop of a file or template source. |
-| `format`  | `"html"` or `"json"` | omitted | Requested response representation.                                                               |
-| `hydrate` | boolean              | `false` | Include browser assets and serialized request data for hydration.                                |
+| Field     | Type                 | Default | Description                                                                                    |
+| --------- | -------------------- | ------- | ---------------------------------------------------------------------------------------------- |
+| `props`   | object               | `{}`    | Props for the configured Vue source.                                                           |
+| `context` | object               | omitted | Per-request data for a factory module or the root `context` prop of a component or inline SFC. |
+| `format`  | `"html"` or `"json"` | omitted | Requested response representation.                                                             |
+| `hydrate` | boolean              | `false` | Include browser assets and serialized request data for hydration.                              |
 
 Example request:
 
@@ -25,7 +25,7 @@ Example request:
 }
 ```
 
-The source is selected in `vueforge.config.ts`, never in the request body. Component and template sources receive only props declared by the root component. An `entry` factory receives the complete `context` and `props` objects and decides what to use.
+The source is selected in `vueforge.config.ts`, never in the request body. Component and inline SFC sources receive only props declared by the root component. A factory module selected by `source` receives the complete `context` and `props` objects and decides what to use.
 
 With `hydrate: true`, all submitted `props` and `context` values are public because VueForge embeds them in the page. Use the same values when the backend composes the server-rendered page and when the browser hydrates it.
 

@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { Buffer } from 'node:buffer'
 import { execFile, spawn } from 'node:child_process'
 import console from 'node:console'
 import { once } from 'node:events'
@@ -46,7 +47,7 @@ async function render(port, agent, title, deadline) {
     signal,
     headers: {
       'content-type': 'application/json',
-      'content-length': body.length,
+      'content-length': Buffer.byteLength(body),
     },
   })
   const received = once(post, 'response')
@@ -144,7 +145,7 @@ try {
     }
 
     console.log(
-      `Node ${process.version} | ${version()} ${process.arch} | ${cpus()[0]?.model ?? 'Unknown CPU'} | ${availableParallelism()} available logical CPUs`,
+      `${process.versions.bun ? `Bun ${process.versions.bun}` : `Node ${process.version}`} | ${version()} ${process.arch} | ${cpus()[0]?.model ?? 'Unknown CPU'} | ${availableParallelism()} available logical CPUs`,
     )
     console.log(
       `POST ${origin}/render | examples/basic/src/App.vue | production | HTTP keep-alive`,

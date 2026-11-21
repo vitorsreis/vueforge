@@ -15,9 +15,10 @@ backend route
 ## Source and rendering
 
 The project root resolves the Vue source, configuration, Vite modules, and
-artifacts. The source is `src/App.vue` by default. A configured `template` is
-compiled as an inline SFC. A configured `entry` module creates a fresh Vue app
-for each render and may provide request-scoped router or store state.
+artifacts. The source is `src/App.vue` by default. The single configured
+`source` is classified internally as a component, inline SFC, or factory module.
+A factory module creates a fresh Vue app for each render and may provide
+request-scoped router or store state.
 
 Development uses Vite's module runner and HMR. Production loads the server
 artifact produced by `vueforge build` and reuses compiled modules while keeping

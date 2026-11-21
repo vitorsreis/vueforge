@@ -1,140 +1,94 @@
 # VueForge
 
-VueForge is a Vue 3 SSR service for applications whose backend is written in any language. It runs beside your backend, renders a configured Vue source, and returns the document head and body fragments over HTTP or standard input. Development mode uses Vite and HMR. Production mode uses the artifacts created by `vueforge build`.
+[![CI](https://github.com/vitorsreis/vueforge/actions/workflows/ci.yml/badge.svg)](https://github.com/vitorsreis/vueforge/actions/workflows/ci.yml)
+[![npm](https://img.shields.io/npm/v/%40vitorsreis%2Fvueforge)](https://www.npmjs.com/package/@vitorsreis/vueforge)
+[![license](https://img.shields.io/github/license/vitorsreis/vueforge)](LICENSE)
 
-## Requirements
+VueForge gives any backend a long-lived Vue 3 SSR process. A Rails, Laravel,
+Django, Go, Rust, Python, PHP, or other application can send props and request
+context to VueForge, receive rendered HTML, and keep its own routing and page
+composition.
 
-- Node.js 26
-- A Vue 3 project
-- npm
+It provides one small workflow for development and production:
+
+- Vite SSR and HMR while developing.
+- A production build with reusable browser and server artifacts.
+- HTTP, Unix socket, and JSONL stdio transports.
+- Node.js and Bun adapters.
+- JSON fragments or complete HTML documents.
 
 ## Install
-
-When a release is available, install the package in the Vue project that you want to render:
 
 ```sh
 npm install @vitorsreis/vueforge
 ```
 
-The repository has not published its first release yet. To work from a checkout, run `npm ci` in the repository and use `node bin/vueforge` from the target project.
+## Start
 
-VueForge does not replace your backend router. Your backend decides which URLs to serve, calls VueForge when it needs HTML, and composes the returned fragments into the document.
-
-## Quick start
-
-Create `src/App.vue` in your project:
-
-```vue
-<script setup>
-defineProps({
-  title: { type: String, default: 'VueForge' },
-})
-</script>
-
-<template>
-  <h1>{{ title }}</h1>
-</template>
-```
-
-Start the development server:
+With `src/App.vue`, no configuration is required:
 
 ```sh
 npx vueforge serve --dev
 ```
 
-The default address is `http://127.0.0.1:9901`. Render the component from another process:
+Then render from any backend or command line:
 
 ```sh
-curl --json '{"props":{"title":"Hello"}}' http://127.0.0.1:9901/render
+curl --json '{"props":{"title":"Hello"}}' \
+  http://127.0.0.1:9901/render
 ```
 
-The response is:
+The response is a small contract that your backend can place in its document:
 
 ```json
-{ "head": [], "content": "<h1>Hello</h1>" }
+{
+  "head": [],
+  "content": "<h1>Hello</h1>"
+}
 ```
 
-Edit `src/App.vue` while the server is running. Vite reloads the SSR module and browser HMR updates hydrated pages.
+The complete setup is in the [quickstart guide](docs/quickstart.md).
 
-## Production
+## Configure
 
-Build the project and start the production server:
-
-```sh
-npx vueforge build
-npx vueforge serve
-```
-
-The default temporary directory is `.vueforge`; `build.outDir` controls the final output directory and defaults to `dist`. Build, serve, and render must use the same project `root` and `build.outDir` settings. Restart the production process after creating a new build.
-
-For a single render without opening an HTTP listener, send one JSON request to standard input:
-
-```sh
-printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render
-```
-
-The command writes the same response shape as `POST /render` to standard output. Use
-`--format json` to force the JSON response envelope or `--format html` to write a
-complete neutral HTML document. The CLI option overrides a `format` value in stdin.
-
-```sh
-printf '%s\n' '{"props":{"title":"Hello"}}' | npx vueforge render --format html
-```
-
-## Commands
-
-| Command                | Description                                              |
-| ---------------------- | -------------------------------------------------------- |
-| `vueforge serve --dev` | Start development SSR, Vite middleware, and HMR.         |
-| `vueforge build`       | Create the browser and server artifacts under `dist`.    |
-| `vueforge serve`       | Start the production HTTP server from a completed build. |
-| `vueforge render`      | Render one production request from standard input.       |
-| `vueforge --help`      | Print command usage.                                     |
-| `vueforge --version`   | Print the installed package version.                     |
-
-Use `--root`, `--host`, `--port`, `--unix`, or `--stdio` with `serve` to override the configuration for one run. TLS and resource-limit options are also available.
-Use `--config <path>` with any command to select a JavaScript or TypeScript
-VueForge configuration file. Run `vueforge <command> --help` for command-specific
-options.
-
-## Configuration
-
-No configuration file is required for `src/App.vue`, `127.0.0.1`, port `9901`, and `.vueforge`. VueForge also loads a standard `vite.config.ts` when the project has one. Add `vueforge.config.ts` when the project needs a different source, listener, artifact directory, or VueForge-specific Vite override.
+The public source entry is a single `source` value. It can be a Vue component,
+an inline SFC, a `.vue` path, or a factory module path:
 
 ```ts
 import { defineConfig } from '@vitorsreis/vueforge'
 
 export default defineConfig({
-  entry: 'src/pages/Home.vue',
-  host: '127.0.0.1',
+  source: 'src/App.vue',
   port: 9901,
-  tempDir: '.vueforge',
-  build: { outDir: 'dist' },
 })
 ```
 
-See [CLI and configuration](docs/configuration.md) for source modes and request context. Development render failures can return a detailed HTML or JSON diagnostic, as described in [HTTP API](docs/http-api.md#development-diagnostics).
+See [configuration](docs/configuration.md) for source inference, Vite merging,
+transport settings, limits, documents, and build output.
 
-## HTTP integration
+## Commands
 
-The service exposes:
+```sh
+vueforge serve --dev
+vueforge build
+vueforge serve
+printf '%s\n' '{"props":{"title":"Hello"}}' | vueforge render
+```
 
-- `GET /` for a JSON welcome response and package version
-- `GET /healthz` for a no-store liveness response
-- `POST /render` for SSR output
-
-With JSON output, the caller owns the document and puts `head` in `<head>` and `content` inside the Vue root. HTML output is a complete document controlled by `document` options. See [HTTP API](docs/http-api.md) for request validation, Accept negotiation, hydration, styles, Teleport, and error handling.
+Use `vueforge --help` or `vueforge <command> --help` for the complete CLI
+contract.
 
 ## Documentation
 
-- [Documentation index](docs/README.md)
-- [CLI and configuration](docs/configuration.md)
+- [Quickstart](docs/quickstart.md)
+- [Configuration and CLI](docs/configuration.md)
 - [HTTP API](docs/http-api.md)
 - [Backend integration](docs/integration.md)
 - [Operations](docs/operations.md)
+- [Architecture](docs/architecture.md)
 - [Contributing](CONTRIBUTING.md)
 - [Security policy](SECURITY.md)
 
 ## License
 
-VueForge is available under the [MIT License](LICENSE).
+MIT © [Vitor Reis](https://github.com/vitorsreis)
