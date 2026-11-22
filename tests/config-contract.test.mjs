@@ -1,6 +1,6 @@
 import assert from 'node:assert/strict'
 import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises'
-import { join } from 'node:path'
+import { join, resolve as resolvePath } from 'node:path'
 import { tmpdir } from 'node:os'
 import test from 'node:test'
 import { fileURLToPath, URL } from 'node:url'
@@ -110,6 +110,7 @@ test('rejects template names that target object prototypes', async (t) => {
 })
 
 test('resolves build output and validates configured render limits', () => {
+  const projectRoot = resolvePath('project')
   const config = {
     limits: {
       maxRequestBytes: 1000,
@@ -120,8 +121,8 @@ test('resolves build output and validates configured render limits', () => {
   }
 
   assert.equal(
-    resolveBuildOutputDir('C:/project', 'dist/app'),
-    'C:\\project\\dist\\app',
+    resolveBuildOutputDir(projectRoot, 'dist/app'),
+    join(projectRoot, 'dist', 'app'),
   )
   assert.deepEqual(resolveRenderLimits(config), config.limits)
   assert.throws(
