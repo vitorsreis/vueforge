@@ -91,6 +91,7 @@ jobs:
     permissions:
       contents: write
       id-token: write
+      packages: write
     env:
       RELEASE_TAG: ${{ needs.build.outputs.tag }}
       RELEASE_ARCHIVE: ${{ needs.build.outputs.archive }}
@@ -102,6 +103,7 @@ jobs:
         with:
           node-version: '24'
           package-manager-cache: false
+          registry-url: 'https://npm.pkg.github.com'
       - name: Check tag is still current
         env:
           GH_TOKEN: ${{ github.token }}
@@ -113,28 +115,11 @@ jobs:
             echo 'The release tag changed after verification.' >&2
             exit 1
           fi
-      - name: Publish public npm package
+      - name: Publish GitHub package
+        env:
+          NODE_AUTH_TOKEN: ${{ github.token }}
         run: |
-          node --input-type=module <<'JS'
-          import assert from 'node:assert/strict'
-          import { execFileSync } from 'node:child_process'
-          import { createHash } from 'node:crypto'
-          import { readFileSync } from 'node:fs'
-
-          const version = process.env.RELEASE_TAG.slice(1)
-          const archive = `./${process.env.RELEASE_ARCHIVE}`
-          const integrity = `sha512-${createHash('sha512').update(readFileSync(archive)).digest('base64')}`
-          const registry = 'https://registry.npmjs.org'
-          const response = await fetch(`${registry}/@vitorsreis%2fvueforge/${version}`)
-
-          if (response.status === 404) {
-            execFileSync('npm', ['publish', archive, '--access', 'public', '--provenance', '--ignore-scripts', '--registry', registry], { stdio: 'inherit' })
-          } else {
-            assert.ok(response.ok, `Could not check the npm release (HTTP ${response.status})`)
-            const metadata = await response.json()
-            assert.equal(metadata.dist?.integrity, integrity, 'The published npm version has different bytes')
-          }
-          JS
+          npm publish "$RELEASE_ARCHIVE" --access public --ignore-scripts --registry https://npm.pkg.github.com
       - name: Publish GitHub Release
         env:
           GH_TOKEN: ${{ github.token }}
