@@ -1,9 +1,9 @@
 # Changelog
 
-## [1.0.0] - 2026-11-21
+## [0.1.0] - 2026-11-22
 
-First stable release of Vueforge, a Vue 3 SSR renderer for backends written in
-any language.
+Initial public release of Vueforge, a Vue 3 SSR renderer for backends written
+in any language.
 
 ### Added
 

@@ -23,7 +23,7 @@ try {
     format: 'json',
   })
 
-  console.log(JSON.stringify(response.body, null, 2))
+  console.log(JSON.stringify(response, null, 2))
 } finally {
   await renderer.close()
 }

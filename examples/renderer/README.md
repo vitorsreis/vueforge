@@ -16,7 +16,7 @@ npm run build
 node examples/renderer/render.mjs "Hello from a script"
 ```
 
-The script prints the transport-neutral JSON body:
+The script prints the JSON render result:
 
 ```json
 {
@@ -40,5 +40,7 @@ npx vueforge build --root examples/renderer
 VUEFORGE_MODE=production node examples/renderer/render.mjs "Production render"
 ```
 
-The public renderer API returns `{ status, headers, body }`. A host can map
-those fields to an HTTP framework, RPC server, worker, or process adapter.
+The public renderer API returns the JSON render result directly. With
+`format: 'html'`, it returns the complete HTML document string. A host can
+serialize either value through an HTTP framework, RPC server, worker, or
+process adapter.
