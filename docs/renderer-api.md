@@ -96,16 +96,15 @@ const response = await renderer.render({
 })
 ```
 
-The request options correspond to the controls available on `POST /render`:
+The request options select the application context and output representation:
 
-| Option        | Description                                                                |
-| ------------- | -------------------------------------------------------------------------- |
-| `context`     | Required request context passed to the Vue app.                            |
-| `template`    | Named catalog entry selected for this render.                              |
-| `format`      | `json` or `html`. If omitted, `accept` and project configuration are used. |
-| `hydrate`     | Includes the public hydration payload and browser assets.                  |
-| `accept`      | Media types used when `format` is omitted.                                 |
-| `errorFormat` | `json` or `html` for development render failures.                          |
+| Option     | Description                                                                |
+| ---------- | -------------------------------------------------------------------------- |
+| `context`  | Required request context passed to the Vue app.                            |
+| `template` | Named catalog entry selected for this render.                              |
+| `format`   | `json` or `html`. If omitted, `accept` and project configuration are used. |
+| `hydrate`  | Includes the public hydration payload and browser assets.                  |
+| `accept`   | Media types used when `format` is omitted.                                 |
 
 For a catalog, `template` must be a configured name:
 
@@ -117,65 +116,46 @@ const response = await renderer.render({
 })
 ```
 
-## Adapt the response
+## Rendered output
 
-The result is transport-neutral and contains the information a custom server
-needs to create its own response:
+The renderer returns the rendered value directly. JSON output contains the
+head entries, content, and optional state:
 
 ```ts
 {
-  status: 200,
-  headers: {
-    'Content-Type': 'application/json; charset=utf-8',
-  },
-  body: {
-    head: [],
-    content: '<h1>Orders</h1>',
-  },
+  head: [],
+  content: '<h1>Orders</h1>',
 }
 ```
 
-When `format` is `json`, `body` contains `head`, `content`, and an optional
-`state`. When `format` is `html`, `body` is the complete document string.
-
-An adapter can map the result to any server API:
+When `format` is `html`, the result is the complete document string:
 
 ```ts
-const response = await renderer.render(request)
-
-serverResponse.statusCode = response.status
-for (const [name, value] of Object.entries(response.headers)) {
-  serverResponse.setHeader(name, value)
-}
-serverResponse.end(
-  typeof response.body === 'string'
-    ? response.body
-    : JSON.stringify(response.body),
-)
+const html = await renderer.render({
+  context: { props: { title: 'Orders' } },
+  format: 'html',
+})
 ```
 
-The renderer does not parse HTTP requests, authenticate callers, apply CORS,
-or write to a socket. Those responsibilities remain with the custom adapter.
+An HTTP, RPC, or process adapter can serialize this value according to its own
+protocol.
 
 ## Errors
 
-Input, template, timeout, capacity, and output-limit failures return their
-corresponding status and a JSON error body. In development, rendering failures
-can return normalized file, line, source-frame, and stack information:
+Input, template, timeout, capacity, and output-limit failures reject the
+render operation. Component failures also reject the operation. HTTP adapters
+can map these errors to status codes and error bodies:
 
 ```ts
-const response = await renderer.render({
-  context: {},
-  errorFormat: 'json',
-})
-
-if (response.status >= 400) {
-  console.error(response.body)
+try {
+  await renderer.render({ context: {} })
+} catch (error) {
+  console.error(error)
 }
 ```
 
-Production component failures remain generic in the returned body. Detailed
-component errors are logged by Vueforge.
+Development component errors retain the diagnostics provided by Vite and Vue.
+Production component errors are logged by Vueforge.
 
 ## Lifecycle
 
@@ -185,7 +165,7 @@ Keep one renderer instance alive and close it when the host process shuts down:
 const renderer = await createVueforgeRenderer({ mode: 'production' })
 
 try {
-  // Handle requests with renderer.render(...).
+  // Render application contexts with renderer.render(...).
 } finally {
   await renderer.close()
 }
@@ -198,7 +178,7 @@ compiled modules and production workers are reused by the renderer instance.
 ## State and hydration
 
 An entry factory can read and update `context.state`. The updated value is
-returned in the JSON body:
+returned in the JSON result:
 
 ```ts
 const response = await renderer.render({

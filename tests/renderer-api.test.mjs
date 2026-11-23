@@ -47,8 +47,7 @@ test('public renderer renders development requests without an HTTP framework', a
     format: 'json',
   })
   assert.equal(renderer.mode, 'development')
-  assert.equal(response.status, 200)
-  assert.deepEqual(response.body, {
+  assert.deepEqual(response, {
     head: [
       { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
       { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
@@ -72,8 +71,7 @@ test('public renderer accepts config-shaped options and ignores the project conf
   t.after(() => renderer.close())
 
   const response = await renderer.render({ context: {}, format: 'json' })
-  assert.equal(response.status, 200)
-  assert.deepEqual(response.body, {
+  assert.deepEqual(response, {
     head: [
       { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
       { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
@@ -103,11 +101,15 @@ test('public renderer accepts a direct main factory', async (t) => {
     context: { props: { title: 'Direct' } },
     format: 'json',
   })
-  assert.equal(response.status, 200)
-  assert.deepEqual(response.body, {
+  assert.deepEqual(response, {
     head: [],
     content: '<h1>Direct</h1>',
   })
+  const html = await renderer.render({
+    context: { props: { title: 'Direct' } },
+    format: 'html',
+  })
+  assert.match(html, /<div id="app"><h1>Direct<\/h1><\/div>/)
   assert.deepEqual(receivedRuntime, { target: 'server', mode: 'development' })
 })
 
@@ -117,9 +119,10 @@ test('public renderer reports invalid direct factory results clearly', async () 
     main: () => null,
   })
 
-  const response = await renderer.render({ context: {}, format: 'json' })
-  assert.equal(response.status, 500)
-  assert.match(String(response.body.error), /main factory/i)
+  await assert.rejects(
+    renderer.render({ context: {}, format: 'json' }),
+    /main factory/i,
+  )
   await renderer.close()
 })
 
@@ -138,8 +141,7 @@ test('public renderer accepts a custom config path', async (t) => {
 
   const response = await renderer.render({ context: {}, format: 'json' })
   assert.equal(renderer.mode, 'development')
-  assert.equal(response.status, 200)
-  assert.deepEqual(response.body, {
+  assert.deepEqual(response, {
     head: [
       { tag: 'script', attrs: { type: 'module', src: '/@vite/client' } },
       { tag: 'script', attrs: { type: 'module', src: '/@vueforge/client' } },
@@ -169,8 +171,7 @@ test('public renderer loads production artifacts and closes idempotently', async
     format: 'json',
   })
   assert.equal(renderer.mode, 'production')
-  assert.equal(response.status, 200)
-  assert.deepEqual(response.body, {
+  assert.deepEqual(response, {
     head: [],
     content: '<h1>Production</h1>',
   })
@@ -199,13 +200,11 @@ test('public renderer rejects unknown catalog templates without exposing names',
 
   const renderer = await createVueforgeRenderer({ root })
   t.after(() => renderer.close())
-  const response = await renderer.render({
-    context: {},
-    template: 'missing',
-  })
-
-  assert.equal(response.status, 400)
-  assert.deepEqual(response.body, {
-    error: 'Unknown template "missing".',
-  })
+  await assert.rejects(
+    renderer.render({
+      context: {},
+      template: 'missing',
+    }),
+    /Unknown template "missing"\./,
+  )
 })

@@ -16,7 +16,7 @@ import type {
   VueforgeConfig,
   VueforgeMode,
 } from './index.js'
-import { createRenderHandler } from './server/render/handler.js'
+import { createRenderOperation } from './server/render/handler.js'
 import { createRenderHandlerOptions } from './server/render/handler-options.js'
 import { developmentRenderer } from './server/development.js'
 import { productionRenderer } from './server/production/renderer.js'
@@ -44,8 +44,6 @@ export interface VueforgeRenderRequest {
   hydrate?: boolean
   /** Accept header used when `format` is omitted. */
   accept?: string
-  /** Error representation used for development failures. */
-  errorFormat?: 'html' | 'json'
 }
 
 /** JSON body returned by a successful public render. */
@@ -68,22 +66,17 @@ export interface VueforgeRenderErrorDetails {
   stack?: string
 }
 
-/** JSON body returned when a public render cannot complete. */
+/** JSON error body used by HTTP render adapters. */
 export interface VueforgeRenderErrorBody {
   error: string
   details?: VueforgeRenderErrorDetails
 }
 
 /** Body returned by a public render. */
-export type VueforgeRenderBody =
-  string | VueforgeRenderJsonBody | VueforgeRenderErrorBody
+export type VueforgeRenderBody = string | VueforgeRenderJsonBody
 
-/** Transport-neutral result returned by a public render. */
-export interface VueforgeRenderResponse {
-  status: number
-  headers: Record<string, string>
-  body: VueforgeRenderBody
-}
+/** Rendered output returned by the public renderer. */
+export type VueforgeRenderResponse = VueforgeRenderBody
 
 /** Public renderer lifecycle and render operation. */
 export interface VueforgeRenderer {
@@ -96,11 +89,10 @@ export interface VueforgeRenderer {
 /**
  * Creates a reusable Vue SSR renderer without an HTTP framework dependency.
  *
- * The returned `render` method is transport-neutral. A custom HTTP, RPC, or
- * process adapter can map its `status`, `headers`, and `body` to its own
- * response type. Each call receives a complete request context and may select
- * a named catalog template. The renderer can load a project configuration
- * file or use configuration fields directly in `options`.
+ * The returned `render` method produces the rendered JSON body or HTML string
+ * directly. Each call receives a complete request context and may select a
+ * named catalog template. The renderer can load a project configuration file
+ * or use configuration fields directly in `options`.
  *
  * @param options - Project and runtime options.
  * @returns A renderer that must be closed when the host process shuts down.
@@ -211,7 +203,7 @@ export async function createVueforgeRenderer(
             (entry) => productionWorkerRenderer(entry, limits),
           )
 
-  const handleRender = createRenderHandler(
+  const renderOperation = createRenderOperation(
     service.render,
     createRenderHandlerOptions(
       config,
@@ -231,7 +223,7 @@ export async function createVueforgeRenderer(
     root,
     async render(request) {
       if (closed) throw new Error('The Vueforge renderer is already closed.')
-      const response = await handleRender({
+      const response = await renderOperation({
         body: request.context,
         ...(request.accept === undefined ? {} : { accept: request.accept }),
         ...(request.format === undefined ? {} : { format: request.format }),
@@ -239,15 +231,8 @@ export async function createVueforgeRenderer(
         ...(request.template === undefined
           ? {}
           : { template: request.template }),
-        ...(request.errorFormat === undefined
-          ? {}
-          : { errorFormat: request.errorFormat }),
       })
-      return {
-        status: response.status,
-        headers: { ...(response.headers ?? {}) },
-        body: response.body as VueforgeRenderBody,
-      }
+      return response.body
     },
     async close() {
       if (closed) return
