@@ -43,7 +43,10 @@ curl -X POST http://127.0.0.1:9901/render \
 {
   "head": [
     { "tag": "script", "attrs": { "type": "module", "src": "/@vite/client" } },
-    { "tag": "script", "attrs": { "type": "module", "src": "/@vueforge/client" } }
+    {
+      "tag": "script",
+      "attrs": { "type": "module", "src": "/@vueforge/client" }
+    }
   ],
   "content": "<h1>Hello</h1>"
 }
