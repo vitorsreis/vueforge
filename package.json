@@ -1,6 +1,6 @@
 {
   "name": "@vitorsreis/vueforge",
-  "version": "1.0.0",
+  "version": "0.1.0",
   "description": "A standalone Vue SSR renderer for backends in any language",
   "author": "Vitor Reis",
   "type": "module",
